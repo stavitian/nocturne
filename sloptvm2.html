@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#030304">
+<title>SLOPTVM II — four living geometries</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='9' y='9' width='14' height='14' fill='%23e9c37c' transform='rotate(45 16 16)'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#f5ead6;
+    --gold:#e9c37c;
+    --gold-hi:#fdf6e3;
+    --dim:rgba(245,234,214,.42);
+  }
+  *{ box-sizing:border-box; }
+  ::selection{ background:rgba(233,195,124,.35); color:#fff8e8; }
+  html,body{ height:100%; }
+  body{
+    margin:0; overflow:hidden; background:#030304; color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #gl{
+    position:fixed; inset:0; width:100vw; height:100dvh; display:block;
+    cursor:grab; touch-action:none;
+  }
+  #gl.grabbing{ cursor:grabbing; }
+  #vig{
+    position:fixed; inset:0; pointer-events:none; z-index:2;
+    background:
+      radial-gradient(ellipse 130% 100% at 50% 42%, rgba(0,0,0,0) 52%, rgba(2,2,9,.55) 100%),
+      linear-gradient(to bottom, rgba(2,2,9,.44), rgba(2,2,9,0) 16%, rgba(2,2,9,0) 84%, rgba(2,2,9,.52));
+  }
+  #grain{
+    position:fixed; inset:-120px; z-index:3; pointer-events:none;
+    opacity:.45; mix-blend-mode:overlay;
+    animation:gr .95s steps(3) infinite;
+  }
+  @keyframes gr{
+    0%{ transform:translate(0,0);} 33%{ transform:translate(-46px,28px);} 66%{ transform:translate(-88px,-20px);} 100%{ transform:translate(0,0);}
+  }
+
+  /* ---------- shared fades ---------- */
+  @keyframes fadein{ from{ opacity:0; } to{ opacity:1; } }
+  .ui{ transition:opacity .8s ease; }
+  body.zen .ui{ opacity:0 !important; pointer-events:none !important; }
+
+  /* ---------- header ---------- */
+  #hd{
+    position:fixed; top:0; left:0; right:0; z-index:5;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:clamp(16px,3vw,34px) clamp(18px,3.4vw,40px);
+    pointer-events:none;
+    animation:fadein 1.6s ease .15s backwards;
+  }
+  #brand{
+    font-size:12px; font-weight:300; letter-spacing:.52em; color:rgba(245,234,214,.82);
+    text-shadow:0 0 18px rgba(233,195,124,.25);
+  }
+  #brand::after{
+    content:""; display:block; width:46px; height:1px; margin-top:9px;
+    background:linear-gradient(90deg, var(--gold), rgba(233,195,124,0));
+  }
+  #mode{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:10px; letter-spacing:.28em; color:var(--dim); text-align:right; padding-top:3px;
+  }
+  #mode b{ color:rgba(233,195,124,.9); font-weight:400; }
+
+  /* ---------- vertical quote ---------- */
+  #quote{
+    position:fixed; left:clamp(10px,3vw,34px); top:50%; transform:translateY(-50%);
+    z-index:5; pointer-events:none;
+    writing-mode:vertical-rl;
+    font-family:Georgia,"Times New Roman",serif; font-style:italic;
+    font-size:12.5px; line-height:1.9; letter-spacing:.08em;
+    color:rgba(233,195,124,.74); max-height:62vh;
+    text-shadow:0 0 10px rgba(3,3,10,.8), 0 1px 2px rgba(3,3,10,.9);
+    animation:fadein 1.8s ease 1.1s backwards;
+  }
+  #quote em{
+    font-style:normal; font-family:inherit; font-size:10px; letter-spacing:.3em;
+    color:rgba(233,195,124,.34); margin-top:18px;
+  }
+
+  /* ---------- form dots (right rail) ---------- */
+  #rail{
+    position:fixed; right:clamp(12px,2.6vw,32px); top:50%; transform:translateY(-50%);
+    z-index:6; display:flex; flex-direction:column; gap:16px; align-items:center;
+    animation:fadein 1.6s ease 1.5s backwards;
+  }
+  .fdot{
+    width:30px; height:30px; margin:0; padding:0;
+    background:none; border:none; cursor:pointer; position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .fdot i{
+    width:11px; height:11px; rotate:45deg;
+    border:2px solid rgba(255,72,64,.85); background:transparent;
+    transition:.45s cubic-bezier(.2,.7,.2,1); display:block;
+  }
+  .fdot:hover i{ border-color:#ff8a80; transform:scale(1.25); box-shadow:0 0 10px rgba(255,72,64,.45); }
+  .fdot.on i{ background:#ff4a3d; border-color:#ffb0a8; box-shadow:0 0 18px rgba(255,70,60,.9); }
+  .fdot.next i{ border-color:#ff8a80; animation:pulse 1.1s ease infinite alternate; }
+  @keyframes pulse{ from{ transform:scale(1);} to{ transform:scale(1.45);} }
+  .fdot:focus-visible{ outline:2px solid #ff4a3d; outline-offset:4px; }
+  .fdot span{
+    position:absolute; right:38px; top:50%; translate:0 -50%;
+    font-family:ui-monospace,Menlo,Consolas,monospace; font-size:10px;
+    letter-spacing:.24em; color:#ff8a80; white-space:nowrap;
+    opacity:0; transition:.4s ease; pointer-events:none;
+    text-shadow:0 1px 6px rgba(0,0,0,.9);
+  }
+  .fdot:hover span, .fdot:focus-visible span{ opacity:1; }
+
+  /* ---------- form dots (right rail) ---------- */
+  #stats{
+    position:fixed; left:clamp(18px,3.4vw,40px); bottom:clamp(46px,8vh,72px); z-index:5;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:10px; letter-spacing:.2em; line-height:2.05; color:var(--dim);
+    pointer-events:none; text-shadow:0 1px 6px rgba(0,0,0,.9);
+    animation:fadein 1.8s ease 1.9s backwards;
+  }
+  #stats b{ color:rgba(233,195,124,.9); font-weight:400; }
+
+  /* ---------- footer ---------- */
+  #ft{
+    position:fixed; left:0; right:0; bottom:0; z-index:6;
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+    padding:14px clamp(18px,3.4vw,40px);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:9px; letter-spacing:.22em; color:rgba(245,234,214,.34);
+    animation:fadein 1.8s ease 2.1s backwards;
+  }
+  #ft .keys::before{ content:"◆ "; color:rgba(233,195,124,.5); }
+  #ft a, #ft button{
+    font:inherit; letter-spacing:inherit; color:rgba(233,195,124,.75);
+    background:none; border:none; cursor:pointer; padding:4px 2px;
+    text-decoration:none; transition:color .3s;
+  }
+  #ft a:hover, #ft button:hover{ color:var(--gold-hi); }
+  #snd.on{ color:var(--gold-hi); }
+  #ft .right{ display:flex; gap:22px; align-items:center; }
+
+  /* ---------- status / fallback ---------- */
+  #status{
+    position:fixed; left:10px; top:64px; z-index:50;
+    font:10px ui-monospace,Menlo,Consolas,monospace; letter-spacing:.08em;
+    color:rgba(233,195,124,.85); text-shadow:0 1px 6px rgba(0,0,0,.9);
+    pointer-events:none; max-width:70vw;
+  }
+  #nogl{
+    position:fixed; inset:auto 0 34vh 0; z-index:4; text-align:center;
+    font-family:Georgia,serif; font-style:italic; font-size:17px;
+    color:rgba(245,234,214,.6); display:none; pointer-events:none;
+  }
+  body.nogl #nogl{ display:block; animation:fadein 2s ease; }
+
+  @media (max-width:760px){
+    #quote, #stats{ display:none; }
+    #rail{ gap:13px; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    #grain{ animation:none; }
+    .fdot.next i{ animation:none; }
+    #hd,#quote,#stats,#ft,#rail{ animation-duration:.001s; }
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="vig"></div>
+<div id="grain"></div>
+
+<header id="hd" class="ui">
+  <div id="brand">SLOPTVM II</div>
+  <div id="mode">FORM <b id="mForm">PYRAMID</b><br>RENDERED LIVE · WEBGL</div>
+</header>
+
+<div id="quote" class="ui">
+  “Mathematics is the art of giving the same name to different things.”
+  <em>HENRI POINCARÉ</em>
+</div>
+
+<nav id="rail" class="ui" aria-label="Forms"></nav>
+
+<div id="stats" class="ui">
+  FPS&nbsp;&nbsp;<b id="sFps">—</b><br>
+  FORM&nbsp;<b id="sForm">PYRAMID</b><br>
+  DIST&nbsp;<b id="sDist">2.90</b><br>
+  AZ&nbsp;&nbsp;&nbsp;<b id="sAz">0°</b> · EL <b id="sEl">0°</b>
+</div>
+
+<footer id="ft" class="ui">
+  <span>ZERO IMAGES · ZERO LIBRARIES · GENERATIVE SCORE</span>
+  <span class="right">
+    <button id="snd" class="on">◆ sound on</button>
+    <button id="fs">⛶ fullscreen</button>
+  </span>
+</footer>
+
+<div id="status"></div>
+<div id="nogl">WebGL is unavailable — the cathedral sleeps.<br><span style="font-size:11px;font-family:ui-monospace,monospace;letter-spacing:.2em">TRY ENABLING HARDWARE ACCELERATION</span></div>
+<audio id="music" loop></audio>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('gl');
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp = (a,b,k) => a+(b-a)*k;
+const easeIO = k => k<.5 ? 4*k*k*k : 1-Math.pow(-2*k+2,3)/2;
+const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 700;
+const LITE = /lite=1/.test(location.search) || /[#&]lite/.test(location.hash);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ================= state ================= */
+const NF = 4;
+const FORM_NAMES = ['PYRAMID','MENGER CATHEDRAL','SIERPINSKI FLAME','APOLLONIAN VEIL'];
+const S = {
+  yaw:-0.55, pitch:0.42, dist:2.9,
+  vyaw:0, vpitch:0,
+  glow:1, pulse:0, flash:0, fov:1.7,
+  zen:false, touched:RM,
+  lastInput:performance.now(), started:performance.now(),
+  frames:0, lastBloom:0,
+  form:0, formNext:-1, mix:0, morphT:1, formLabel:'PYRAMID',
+  queued:-1,
+};
+let scale = LITE ? 0.40 : (MOBILE ? 0.62 : 0.34);
+const MAXPX = LITE ? 650000 : (MOBILE ? 900000 : 2300000);
+let warmK = 0.34, morphK = 1, lastWarm = 0, stalls = 0, dts = 0.05;
+let DPR = 1, W = 0, H = 0;
+let fps = 60;
+const fpsE = [];
+const timeScale = RM ? 0.35 : 1;
+
+/* ================= status readout ================= */
+function setStatus(msg){ try{ $('status').textContent = msg; }catch(err){} }
+window.addEventListener('error', e => { try{ setStatus('JS ERROR: '+(e.message||'?')); }catch(err){} });
+
+/* ================= film grain (generated, zero network) ================= */
+(function grain(){
+  try{
+    const g = document.createElement('canvas'); g.width = g.height = 140;
+    const gc = g.getContext('2d');
+    const im = gc.createImageData(140,140), d = im.data;
+    for(let i=0;i<d.length;i+=4){
+      const v = (Math.random()*255)|0;
+      d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=26;
+    }
+    gc.putImageData(im,0,0);
+    $('grain').style.backgroundImage = 'url('+g.toDataURL('image/png')+')';
+  }catch(err){}
+})();
+
+/* ================= shaders ================= */
+const VS = `
+attribute vec2 p;
+varying vec2 vUv;
+void main(){ vUv = p*0.5+0.5; gl_Position = vec4(p,0.,1.); }
+`;
+
+const FS = `
+precision highp float;
+uniform vec2 uRes;
+uniform float uTime, uYaw, uPitch, uDist, uGlow, uFov, uMix, uFlash;
+uniform int uFormA, uFormB;
+varying vec2 vUv;
+
+float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
+float noise(vec2 p){
+  vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),
+             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x), f.y);
+}
+
+float sdBox(vec3 p, vec3 b){ vec3 d = abs(p)-b; return min(max(d.x,max(d.y,d.z)),0.0)+length(max(d,0.0)); }
+
+float sdPyramid(vec3 p, float h){
+  float m2 = h*h + 0.25;
+  p.xz = abs(p.xz);
+  p.xz = (p.z>p.x) ? p.zx : p.xz;
+  p.xz -= 0.5;
+  vec3 q = vec3(p.z, h*p.y - 0.5*p.x, h*p.x + 0.5*p.y);
+  float s = max(-q.x, 0.0);
+  float t = clamp((q.y - 0.5*p.z)/(m2 + 0.25), 0.0, 1.0);
+  float a = m2*(q.x+s)*(q.x+s) + q.y*q.y;
+  float b = m2*(q.x+0.5*t)*(q.x+0.5*t) + (q.y-m2*t)*(q.y-m2*t);
+  float d2 = min(q.y, -q.y*m2 - q.x*0.5) > 0.0 ? 0.0 : min(a, b);
+  return sqrt((d2 + q.z*q.z)/m2) * sign(max(q.z, -p.y));
+}
+
+/* --- 0 · pyramid (exact square pyramid, iq) --- */
+vec2 pyramidDE(vec3 p){
+  float s = 1.25;
+  float h = 1.2;
+  vec3 q = p / s;
+  q.y -= h*0.5;
+  float d = sdPyramid(q, h);
+  float tr = clamp(0.45 + 0.55*smoothstep(-0.75, 0.75, p.y), 0.0, 1.0);
+  return vec2(d*s, tr);
+}
+
+/* --- 1 · menger cathedral (iq construction, scale 3) --- */
+vec2 mengerDE(vec3 p){
+  float d = sdBox(p, vec3(1.0));
+  float tr = 1e9;
+  float s = 1.0;
+  for(int m=0;m<4;m++){
+    vec3 a = mod(p*s, 2.0)-1.0;
+    s *= 3.0;
+    vec3 r = abs(1.0 - 3.0*abs(a));
+    float da = max(r.x,r.y);
+    float db = max(r.y,r.z);
+    float dc = max(r.z,r.x);
+    float c = (min(da,min(db,dc))-1.0)/s;
+    d = max(d, c);
+    tr = min(tr, abs(a.x)+abs(a.y)+abs(a.z));
+  }
+  return vec2(d*0.8, tr*0.42);
+}
+
+/* --- 2 · sierpinski flame (symmetric folds) --- */
+vec2 sierpDE(vec3 p){
+  float t = 1.0;
+  float tr = 1e9;
+  for(int i=0;i<10;i++){
+    if(p.x+p.y<0.0) p.xy = -p.yx;
+    if(p.x+p.z<0.0) p.xz = -p.zx;
+    if(p.y+p.z<0.0) p.zy = -p.yz;
+    tr = min(tr, dot(p,p));
+    p = p*2.0 - 1.0;
+    t *= 2.0;
+  }
+  float d = (length(p)-2.0)/t;
+  return vec2(d*1.2, sqrt(tr)*0.6);
+}
+
+/* --- 3 · apollonian veil (sphere packing, iq) --- */
+vec2 apollonianDE(vec3 p){
+  float s = 1.0;
+  float tr = 1e9;
+  for(int i=0;i<8;i++){
+    p = -1.0 + 2.0*fract(0.5*p+0.5);
+    float r2 = dot(p,p);
+    tr = min(tr, r2);
+    float k = 1.15/r2;
+    p *= k;
+    s *= k;
+  }
+  float d = 0.25*abs(p.y)/s;
+  return vec2(d*0.9, sqrt(tr)*0.9);
+}
+
+
+
+
+/* dispatcher: any form may blend into any other */
+vec2 formDE(int f, vec3 p){
+  if(f == 1) return mengerDE(p);
+  if(f == 2) return sierpDE(p);
+  if(f == 3) return apollonianDE(p);
+  return pyramidDE(p);
+}
+
+vec2 figure(vec3 p){
+  int fb = uFormB;
+  float mx = uMix;
+  if(fb < 0 || mx <= 0.001) return formDE(uFormA, p);
+  vec2 a = formDE(uFormA, p);
+  if(mx >= 0.999) return formDE(fb, p);
+  vec2 b = formDE(fb, p);
+  float k = smoothstep(0.0, 1.0, mx);
+  float env = 4.0*k*(1.0-k);
+  float d = mix(a.x, b.x, k)*mix(1.0, 0.55, env);
+  return vec2(d, mix(a.y, b.y, k));
+}
+
+/* night sky: horizon breath, faint violet wash, two star layers */
+vec3 sky(vec3 rd){
+  float h = rd.y*0.5+0.5;
+  vec3 col = vec3(0.002,0.002,0.004);
+  col += vec3(0.010,0.009,0.014)*exp(-abs(rd.y)*6.5);
+  float nw = noise(rd.xy*2.3+vec2(uTime*0.008,0.))
+           * noise(rd.zy*2.7-vec2(0.,uTime*0.006));
+  col += vec3(0.045,0.035,0.085)*nw*nw*0.6*h;
+  vec2 sc = vec2(atan(rd.z,rd.x), asin(clamp(rd.y,-1.,1.)));
+  for(int L=0;L<2;L++){
+    float scl = (L==0)?26.0:57.0;
+    float thr = (L==0)?0.930:0.962;
+    vec2 g = sc*scl;
+    vec2 id = floor(g); vec2 f = fract(g)-0.5;
+    float h1 = hash(id+float(L)*17.3);
+    if(h1>thr){
+      vec2 o = vec2(hash(id+7.1),hash(id+3.7))-0.5;
+      float d = length(f-o*0.8);
+      float tw = 0.55+0.45*sin(uTime*(1.2+h1*2.6)+h1*41.0);
+      float amp = (L==0)?(0.30+h1):(0.16+h1*0.5);
+      col += ((L==0)?vec3(1.0,0.95,0.85):vec3(0.75,0.85,1.0))
+             * smoothstep(0.055,0.,d)*tw*amp;
+    }
+  }
+  return col;
+}
+
+/* drifting dust motes lit by the warm key */
+vec3 dust(vec3 ro, vec3 rd, float tScene){
+  vec3 acc = vec3(0.0);
+  for(int i=0;i<22;i++){
+    float fi = float(i);
+    vec3 sp = vec3(
+      fract(sin(fi*12.9898+1.0)*43758.5453),
+      fract(sin(fi*78.233+2.0)*43758.5453),
+      fract(sin(fi*39.425+3.0)*43758.5453))*6.0 - 3.0;
+    float ph = fract(sin(fi*91.17)*913.77);
+    float rad = mix(0.008,0.05, fract(sin(fi*57.31)*711.19));
+    float spd = mix(0.045,0.16, ph);
+    sp.y = mod(sp.y + uTime*spd + ph*6.0, 6.0) - 3.0;
+    vec3 rel = sp - ro;
+    float tp = dot(rel, rd);
+    if(tp < 0.15 || tp > min(tScene, 6.5)) continue;
+    float dd = length(rel - rd*tp);
+    float halo = exp(-dd*dd/(rad*rad));
+    float tw = 0.55+0.45*sin(uTime*(0.5+ph*1.5)+fi);
+    vec3 ldir = normalize(vec3(0.65,0.55,0.52) - sp);
+    float lam = clamp(dot(-rd, ldir), 0.0, 1.0);
+    acc += (vec3(1.0,0.88,0.68)*(0.25+lam*1.35)
+          + vec3(0.75,0.80,0.95)*0.22*(1.0-lam))
+           * halo * tw * 0.16;
+  }
+  return acc;
+}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy*2.0-uRes)/uRes.y;
+  float cy=cos(uPitch), sy=sin(uPitch), cz=cos(uYaw), sz=sin(uYaw);
+  vec3 fwd = normalize(vec3(-cz*cy, sy, -sz*cy));
+  vec3 rgt = normalize(cross(vec3(0.,1.,0.), fwd));
+  vec3 up  = cross(fwd,rgt);
+  vec3 ro  = -fwd*uDist;
+  vec3 rd  = normalize(rgt*uv.x + up*uv.y + fwd*uFov);
+
+  vec3 bgs = sky(rd);
+  vec3 col = bgs;
+
+  float t = 0.0, tr = 1.0, glow = 0.0;
+  bool hit = false;
+  for(int i=0;i<110;i++){
+    vec3 p = ro+rd*t;
+    vec2 m = figure(p);
+    glow += exp(-max(m.x,0.)*34.0)*0.02;
+    if(m.x < 0.0009+t*0.0011){ hit=true; tr=m.y; break; }
+    t += max(m.x*0.85, 0.001);
+    if(t>7.0) break;
+  }
+
+  if(hit){
+    vec3 p = ro+rd*t;
+    vec2 e = vec2(0.0015+t*0.002, 0.0);
+    vec3 n = normalize(vec3(
+      figure(p+e.xyy).x-figure(p-e.xyy).x,
+      figure(p+e.yxy).x-figure(p-e.yxy).x,
+      figure(p+e.yyx).x-figure(p-e.yyx).x));
+
+    float occ=0.0, sca=1.0;
+    for(int j=0;j<3;j++){
+      float hs = 0.02+0.09*float(j);
+      occ += (hs-figure(p+n*hs).x)*sca;
+      sca *= 0.7;
+    }
+    float ao = clamp(1.0-2.2*occ, 0.0, 1.0);
+
+    vec3 L1 = normalize(vec3(0.65,0.55,0.52));
+    float sh = 1.0;
+    float tt = 0.03;
+    for(int j=0;j<24;j++){
+      float dd = figure(p+L1*tt).x;
+      sh = min(sh, smoothstep(0.,1., 9.0*dd/tt));
+      tt += clamp(dd, 0.012, 0.22);
+      if(tt>2.6 || sh<0.02) break;
+    }
+    sh = clamp(sh,0.,1.);
+
+    /* material: deep indigo -> violet -> gold by orbit trap */
+    vec3 base = mix(vec3(0.045,0.05,0.125), vec3(0.40,0.34,0.58), clamp(tr*1.6-0.25,0.,1.));
+    base = mix(base, vec3(0.85,0.67,0.36), smoothstep(0.55,1.15,tr)*0.85);
+
+    vec3 L2 = normalize(vec3(-0.5,0.25,-0.6));
+    vec3 L3 = normalize(vec3(-0.25,-0.55,0.75));          /* teal rim from below-behind */
+    float dif  = max(dot(n,L1),0.0);
+    float dif2 = max(dot(n,L2),0.0);
+    float rim  = pow(clamp(1.0+dot(n,L3),0.,1.), 2.4);
+    vec3 hlf = normalize(L1-rd);
+    float spe = pow(max(dot(n,hlf),0.0),36.0)*(0.4+0.6*sh);
+    float fre = pow(clamp(1.0+dot(n,rd),0.,1.), 3.0);
+    vec3 specTint = mix(vec3(1.0,0.88,0.62), vec3(0.72,0.86,1.0), clamp(tr,0.,1.));
+
+    col = base*(0.10+0.32*ao)
+        + vec3(1.00,0.82,0.55)*dif*sh*1.15
+        + vec3(0.30,0.38,0.75)*dif2*0.55
+        + vec3(0.35,0.75,0.80)*rim*0.30
+        + vec3(1.00,0.88,0.62)*fre*(0.35+0.40*sh)
+        + specTint*spe*1.2;
+    float hi = max(max(col.r,col.g),col.b);
+    col -= max(hi-0.78, 0.0)*(1.0-clamp(tr*0.9,0.0,1.0))*vec3(0.9,0.8,0.6);
+    col *= 0.5+0.5*ao;
+    col = mix(col, bgs, smoothstep(3.2,6.8,t));
+  }
+
+  col += vec3(0.90,0.75,0.50)*glow*uGlow;
+  col += dust(ro, rd, hit ? t : 7.0);
+  col += vec3(1.0,0.85,0.55)*uFlash*(0.22+0.5*glow);
+
+  col *= 1.12 + uFlash*0.25;
+  col = (col*(2.51*col+0.03))/(col*(2.43*col+0.59)+0.14);
+  col = pow(clamp(col,0.,1.), vec3(0.4545));
+  float vig = pow(16.0*vUv.x*vUv.y*(1.0-vUv.x)*(1.0-vUv.y), 0.22);
+  col *= mix(0.55,1.0,vig);
+  float cf = distance(vUv, vec2(0.5));
+  col *= mix(vec3(1.0), vec3(0.965,0.975,1.075), smoothstep(0.42,0.78,cf));
+  col += (hash(gl_FragCoord.xy + fract(uTime))-0.5)*(1.8/255.0);
+
+  gl_FragColor = vec4(col,1.0);
+}
+`;
+
+/* ================= gl boot ================= */
+let gl = null, P = null, U = {}, failMsg = '';
+function compile(type, src){
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)){
+    throw new Error('shader: '+gl.getShaderInfoLog(sh));
+  }
+  return sh;
+}
+function gpuIsSoftware(){
+  try{
+    const t = document.createElement('canvas');
+    const g = t.getContext('webgl') || t.getContext('experimental-webgl');
+    const dbg = g && g.getExtension('WEBGL_debug_renderer_info');
+    const rn = dbg ? String(g.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : (navigator.userAgent||'');
+    return /swiftshader|software|llvmpipe|basic.?render/i.test(rn);
+  }catch(err){ return false; }
+}
+
+function bootGL(){
+  try{
+    const SOFT = gpuIsSoftware();
+    gl = cv.getContext('webgl', {antialias:false, depth:false, stencil:false,
+      alpha:false, preserveDrawingBuffer:SOFT,
+      powerPreference: SOFT ? 'low-power' : 'high-performance'})
+     || cv.getContext('experimental-webgl', {antialias:false, preserveDrawingBuffer:SOFT});
+    if(!gl) throw new Error('no webgl context');
+    try{
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      const rn = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+      if(/swiftshader|software|llvmpipe/i.test(rn)){ scale = Math.min(scale, 0.38); }
+    }catch(err){}
+    cv.addEventListener('webglcontextlost', e => {
+      e.preventDefault();
+      failMsg = 'context lost — recovering';
+      document.body.classList.add('nogl');
+    });
+    cv.addEventListener('webglcontextrestored', () => {
+      failMsg = '';
+      document.body.classList.remove('nogl');
+      try{ bootGL(); fit(); }catch(err){}
+    });
+    const vs = compile(gl.VERTEX_SHADER, VS);
+    const fs = compile(gl.FRAGMENT_SHADER, FS);
+    const pr = gl.createProgram();
+    gl.attachShader(pr,vs); gl.attachShader(pr,fs);
+    gl.bindAttribLocation(pr, 0, 'p');
+    gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr, gl.LINK_STATUS)){
+      throw new Error('link: '+gl.getProgramInfoLog(pr));
+    }
+    gl.useProgram(pr);
+    P = pr;
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    ['uRes','uTime','uYaw','uPitch','uDist','uGlow','uFov','uMix','uFlash','uFormA','uFormB']
+      .forEach(n => { U[n] = gl.getUniformLocation(pr, n); });
+  }catch(err){
+    failMsg = String(err.message||err);
+    gl = null;
+    document.body.classList.add('nogl');
+  }
+}
+
+function fit(){
+  DPR = Math.min(devicePixelRatio||1, 1.75);
+  W = innerWidth; H = innerHeight;
+  let w = Math.max(2, Math.round(W*DPR*scale));
+  let h = Math.max(2, Math.round(H*DPR*scale));
+  const px = w*h;
+  if(px > MAXPX){
+    const k = Math.sqrt(MAXPX/px);
+    w = Math.max(2, Math.round(w*k));
+    h = Math.max(2, Math.round(h*k));
+  }
+  cv.width  = w;
+  cv.height = h;
+  cv.style.width = W+'px';
+  cv.style.height = H+'px';
+  if(gl) gl.viewport(0, 0, cv.width, cv.height);
+}
+addEventListener('resize', fit);
+
+/* ================= procedural score (WebAudio, zero payload) ================= */
+let AC = null, master = null, sndOn = true, musicLive = false;
+/* --- "Oxygène"-style analog sequencer (original composition, E minor @112) --- */
+const BPM = 112, STEP = 60/BPM/2;
+const nf = m => 440*Math.pow(2,(m-69)/12);
+const BASS = [40,47,52,47,43,47,52,47,  36,43,48,43,40,43,48,43];
+const LEAD = [59,-1,64,-1,67,66,64,-1,  62,-1,59,-1,64,62,59,-1];
+const PADS  = [[52,55,59,64],[48,52,55,60]];
+let seqStep = 0, seqNext = 0, seqTimer = null;
+function audioInit(){
+  if(AC) return true;
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return false;
+    AC = new Ctx();
+    master = AC.createGain();
+    master.gain.value = 0;
+    master.connect(AC.destination);
+    /* echo: dotted-eighth feedback delay — the signature bounce */
+    const dl = AC.createDelay(1.0); dl.delayTime.value = 0.40;
+    const fb = AC.createGain(); fb.gain.value = 0.36;
+    const dlp = AC.createBiquadFilter(); dlp.type='lowpass'; dlp.frequency.value = 3200;
+    dl.connect(fb); fb.connect(dlp); dlp.connect(dl);
+    const wet = AC.createGain(); wet.gain.value = 0.40;
+    dl.connect(wet); wet.connect(master);
+    AC._bus = { dry: master, fx: dl };
+    /* pad: four detuned saws through a breathing lowpass */
+    const pGain = AC.createGain(); pGain.gain.value = 0.09;
+    const pFlt = AC.createBiquadFilter(); pFlt.type='lowpass'; pFlt.frequency.value = 720; pFlt.Q.value = 0.5;
+    const pOscs = [0,1,2,3].map(i => {
+      const o = AC.createOscillator(); o.type='sawtooth';
+      o.detune.value = (i-1.5)*4;
+      o.connect(pFlt); o.start();
+      return o;
+    });
+    pFlt.connect(pGain); pGain.connect(master); pGain.connect(dl);
+    const pLfo = AC.createOscillator(); pLfo.frequency.value = 0.06;
+    const pLfoG = AC.createGain(); pLfoG.gain.value = 240;
+    pLfo.connect(pLfoG); pLfoG.connect(pFlt.frequency);
+    pLfo.start();
+    AC._pad = { oscs: pOscs };
+    setPad(PADS[0]);
+    /* air: filtered noise bed */
+    const nb = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate);
+    const nd = nb.getChannelData(0);
+    for(let i=0;i<nd.length;i++) nd[i] = Math.random()*2-1;
+    const ns = AC.createBufferSource(); ns.buffer = nb; ns.loop = true;
+    const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 640; bp.Q.value = 7;
+    const ng = AC.createGain(); ng.gain.value = 0.012;
+    ns.connect(bp); bp.connect(ng); ng.connect(master);
+    const nlfo = AC.createOscillator(); nlfo.frequency.value = 0.031;
+    const nlfoG = AC.createGain(); nlfoG.gain.value = 260;
+    nlfo.connect(nlfoG); nlfoG.connect(bp.frequency);
+    ns.start(); nlfo.start();
+    /* sequencer clock */
+    seqNext = AC.currentTime + 0.06;
+    seqTimer = setInterval(seqTick, 25);
+    return true;
+  }catch(err){ AC = null; return false; }
+}
+function setPad(chord){
+  if(!AC || !AC._pad) return;
+  chord.forEach((m,i) => { AC._pad.oscs[i].frequency.setTargetAtTime(nf(m), AC.currentTime, 0.05); });
+}
+function bassNote(freq, t, dur){
+  try{
+    const o = AC.createOscillator(); o.type='sawtooth'; o.frequency.value = freq;
+    const flt = AC.createBiquadFilter(); flt.type='lowpass'; flt.Q.value = 0.7;
+    flt.frequency.setValueAtTime(1900, t);
+    flt.frequency.exponentialRampToValueAtTime(320, t+dur);
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.26, t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    o.connect(flt); flt.connect(g); g.connect(master); g.connect(AC._bus.fx);
+    o.start(t); o.stop(t+dur+0.05);
+  }catch(err){}
+}
+function leadNote(freq, t, dur){
+  try{
+    const o = AC.createOscillator(); o.type='square'; o.frequency.value = freq;
+    const flt = AC.createBiquadFilter(); flt.type='lowpass';
+    flt.frequency.setValueAtTime(2600, t);
+    flt.frequency.exponentialRampToValueAtTime(900, t+dur*1.4);
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.14, t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0008, t+dur*1.5);
+    o.connect(flt); flt.connect(g); g.connect(master); g.connect(AC._bus.fx);
+    o.start(t); o.stop(t+dur*1.6+0.05);
+  }catch(err){}
+}
+function seqTick(){
+  if(!AC || !musicLive || AC.state !== 'running') return;
+  const ahead = AC.currentTime + 0.12;
+  let guard = 0;
+  while(seqNext < ahead && guard < 8){
+    const bar = Math.floor(seqStep/8) % 2;
+    const st = seqStep % 16;
+    const t = seqNext;
+    const bm = BASS[st], lm = LEAD[st];
+    if(bm > 0) bassNote(nf(bm), t, STEP*0.9);
+    if(lm > 0) leadNote(nf(lm), t, STEP*0.9);
+    if(st === 0) setPad(PADS[bar]);
+    seqStep = (seqStep+1) % 16;
+    seqNext += STEP;
+    guard++;
+  }
+}
+function ramp(to, dur){
+  if(!master) return;
+  const from = master.gain.value, t0 = performance.now();
+  clearInterval(master._ramp);
+  master._ramp = setInterval(() => {
+    const k = Math.min(1, (performance.now()-t0)/dur);
+    master.gain.value = from + (to-from)*k;
+    if(k >= 1) clearInterval(master._ramp);
+  }, 60);
+}
+
+function swell(){
+  if(!AC || AC.state !== 'running') return;
+  try{
+    const o = AC.createOscillator(); o.type='sine'; o.frequency.value = 72;
+    const g = AC.createGain();
+    const t0 = AC.currentTime;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.09, t0+0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+2.4);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0+2.5);
+  }catch(err){}
+}
+function audioStart(){
+  if(!audioInit()) return;
+  const live = () => { musicLive = true; };
+  if(AC.state === 'suspended'){
+    AC.resume().then(live).catch(()=>{});
+  }
+  if(AC.state === 'running') live();
+  seqNext = AC.currentTime + 0.06;
+  ramp(0.45, 1600);
+}
+function audioStop(){
+  ramp(0, 900);
+  musicLive = false;
+  setTimeout(() => { try{ if(AC && !sndOn) AC.suspend(); }catch(err){} }, 1000);
+}
+function toggleSound(){
+  try{
+    sndOn = !sndOn;
+    if(sndOn) audioStart(); else audioStop();
+    const btn = $('snd');
+    btn.textContent = sndOn ? '\u25C6 sound on' : '\u25C7 sound off';
+    btn.classList.toggle('on', sndOn);
+  }catch(err){}
+}
+
+function gestureRetry(){
+  if(sndOn && !musicLive) audioStart();
+}
+addEventListener('pointerdown', gestureRetry);
+addEventListener('pointermove', gestureRetry, {passive:true});
+addEventListener('keydown', gestureRetry);
+addEventListener('wheel', gestureRetry, {passive:true});
+document.addEventListener('visibilitychange', () => {
+  try{
+    if(!AC) return;
+    if(document.hidden) AC.suspend();
+    else if(sndOn) AC.resume();
+  }catch(err){}
+});
+
+/* ================= interactions ================= */
+let dragging = false, px = 0, py = 0;
+let lastTapT = 0, lastTapX = 0, lastTapY = 0;
+const pts = new Map();
+let pinchD = 0;
+function markInput(){
+  S.lastInput = performance.now();
+  S.touched = true;
+}
+function startMorph(target){
+  target = ((target % NF) + NF) % NF;
+  if(S.formNext < 0){
+    if(target === S.form) return;
+    S.formNext = target;
+    S.mix = 0;
+    S.morphT = 0;
+    swell();
+  }else{
+    if(S.queued < 0) S.queued = target;   /* keep the user's pick; never stomp it */
+  }
+  railSync();
+}
+function bloomCycle(){
+  const now = performance.now();
+  if(now - S.lastBloom < 380) return;
+  S.lastBloom = now;
+  markInput();
+  S.pulse = 1;
+  S.fov = 1.56;
+  startMorph((S.formNext >= 0 ? S.formNext : S.form) + 1);
+}
+cv.addEventListener('pointerdown', e => {
+  dragging = true; px = e.clientX; py = e.clientY;
+  cv.classList.add('grabbing');
+  pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pts.size === 2){
+    const a = [...pts.values()];
+    pinchD = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y);
+  }
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  markInput();
+  const now = performance.now();
+  if(now - lastTapT < 330 && Math.hypot(e.clientX-lastTapX, e.clientY-lastTapY) < 26){
+    bloomCycle();
+  }
+  lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
+});
+cv.addEventListener('pointermove', e => {
+  if(pts.has(e.pointerId)) pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pts.size === 2){
+    const a = [...pts.values()];
+    const nd = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y);
+    if(pinchD > 0 && nd > 0){
+      S.dist = clamp(S.dist * pinchD/nd, 1.35, 5.5);
+      markInput();
+    }
+    pinchD = nd;
+    return;
+  }
+  if(!dragging) return;
+  const dx = e.clientX-px, dy = e.clientY-py;
+  px = e.clientX; py = e.clientY;
+  S.yaw   -= dx*0.005;
+  S.pitch  = clamp(S.pitch + dy*0.005, 0.05, 1.35);
+  S.vyaw   = lerp(S.vyaw,   -dx*0.005/0.016, 0.45);
+  S.vpitch = lerp(S.vpitch,  dy*0.005/0.016, 0.45);
+  markInput();
+});
+function endDrag(e){
+  if(e && pts.has(e.pointerId)) pts.delete(e.pointerId);
+  if(pts.size < 2) pinchD = 0;
+  if(pts.size === 0){ dragging = false; cv.classList.remove('grabbing'); }
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+addEventListener('wheel', e => {
+  e.preventDefault();
+  S.dist = clamp(S.dist*Math.exp(e.deltaY*0.0011), 1.35, 5.5);
+  markInput();
+}, {passive:false});
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('dblclick', bloomCycle);
+$('snd').addEventListener('click', toggleSound);
+$('fs').addEventListener('click', () => {
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  else document.documentElement.requestFullscreen().catch(()=>{});
+});
+addEventListener('keydown', e => {
+  if(e.code === 'Space'){
+    e.preventDefault();
+    S.zen = !S.zen;
+    document.body.classList.toggle('zen', S.zen);
+    markInput();
+  }else if(e.key === 'm' || e.key === 'M'){
+    toggleSound();
+  }else if(e.key === 'b' || e.key === 'B'){
+    bloomCycle(); markInput();
+  }else if(e.key === 'f' || e.key === 'F'){
+    $('fs').click();
+  }else if(e.key === 'ArrowLeft'){ S.yaw += 0.12; markInput(); }
+  else if(e.key === 'ArrowRight'){ S.yaw -= 0.12; markInput(); }
+  else if(e.key === 'ArrowUp'){ S.pitch = clamp(S.pitch-0.08, 0.05, 1.35); markInput(); }
+  else if(e.key === 'ArrowDown'){ S.pitch = clamp(S.pitch+0.08, 0.05, 1.35); markInput(); }
+});
+
+/* form rail */
+FORM_NAMES.forEach((name, i) => {
+  const b = document.createElement('button');
+  b.className = 'fdot';
+  b.setAttribute('aria-label', name);
+  b.innerHTML = '<i></i><span>'+name+'</span>';
+  b.addEventListener('click', () => { startMorph(i); markInput(); });
+  $('rail').appendChild(b);
+});
+function railSync(){
+  const dots = document.querySelectorAll('.fdot');
+  const active = S.formNext >= 0 ? S.formNext : S.form;
+  dots.forEach((d, i) => {
+    d.classList.toggle('on', i === active);
+    d.classList.toggle('next', S.formNext >= 0 && i === S.formNext && i !== S.form);
+  });
+}
+
+/* automatic pilgrimage — only while the visitor is idle (≥18s since input),
+   so it never overrides a human's choice */
+if(!RM){
+  setTimeout(() => {
+    setInterval(() => {
+      try{
+        if(performance.now() - S.lastInput < 18000) return;
+        const cur = S.formNext >= 0 ? S.formNext : S.form;
+        let n = cur;
+        while(n === cur) n = (Math.random()*NF)|0;
+        startMorph(n);
+      }catch(err){}
+    }, 12000);
+  }, 9000);
+}
+
+/* ================= hud ================= */
+let lastHud = 0;
+function hud(now){
+  if(now-lastHud < 200) return;
+  lastHud = now;
+  $('sFps').textContent  = String(Math.round(fps));
+  const label = (S.formNext >= 0)
+    ? FORM_NAMES[S.form] + ' \u2192 ' + FORM_NAMES[S.formNext]
+    : FORM_NAMES[S.form];
+  S.formLabel = label;
+  $('sForm').textContent = label;
+  $('mForm').textContent = FORM_NAMES[(S.formNext >= 0) ? S.formNext : S.form];
+  $('sDist').textContent = S.dist.toFixed(2);
+  let az = Math.round((S.yaw*180/Math.PI)%360); if(az<0) az += 360;
+  $('sAz').textContent = az + '\u00B0';
+  $('sEl').textContent = Math.round(S.pitch*180/Math.PI) + '\u00B0';
+  railSync();
+}
+
+/* ================= main loop ================= */
+let last = performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now-last)/1000) || 0.016;
+  last = now;
+  fpsE.push(1/Math.max(dt,1e-4));
+  if(fpsE.length > 30) fpsE.shift();
+  fps = fpsE.reduce((a,b)=>a+b,0)/fpsE.length;
+
+  const it = (now-S.started)/1000;
+
+  /* scripted opening descent until the first touch */
+  let iy = S.yaw, ip = S.pitch, idist = S.dist;
+  if(!S.touched && it < 7){
+    const k = easeIO(clamp(it/6.5, 0, 1));
+    idist = lerp(4.4, S.dist, k);
+    iy    = S.yaw + Math.sin(k*Math.PI)*-1.05;
+    ip    = lerp(0.10, S.pitch, k);
+  }
+
+  /* inertia + idle attractor */
+  if(!dragging){
+    S.vyaw   *= Math.exp(-dt*2.2);
+    S.vpitch *= Math.exp(-dt*2.2);
+    S.yaw   += S.vyaw*dt;
+    S.pitch  = clamp(S.pitch + S.vpitch*dt, 0.05, 1.35);
+  }
+  const idle = (!RM && (now-S.lastInput) > 14000) ? Math.min(1, ((now-S.lastInput)-14000)/9000) : 0;
+  S.yaw += dt*(RM ? 0 : (0.05 + idle*0.17));
+
+  /* watchdog: shed resolution if frames stall */
+  dts = dts*0.7 + dt*0.3;
+  if(dts > 0.5){
+    stalls++;
+    if(stalls >= 2){
+      scale = Math.max(0.22, scale*0.6);
+      fit();
+      stalls = 0;
+      setStatus('heavy load \u2014 lowering resolution ('+Math.round(scale*100)+'%)');
+    }
+  }else if(dts < 0.25 && stalls > 0){ stalls--; }
+
+  /* warm-up: grow sharpness only while frame times allow */
+  morphK = (S.formNext >= 0) ? 0.48 : Math.min(1, morphK + dt*0.8);
+  if(now - lastWarm > 700){
+    lastWarm = now;
+    const target = clamp(Math.min(warmK, morphK), 0.2, 1);
+    if(Math.abs(scale-target) > 0.02){ scale = target; fit(); }
+    const fastEnough = LITE || dts < 0.05;
+    if(warmK < 1) warmK = Math.min(1, warmK + (fastEnough ? 0.12 : -0.10));
+    warmK = Math.max(warmK, scale);
+  }
+
+  S.pulse *= Math.exp(-dt*1.9);
+  S.flash *= Math.exp(-dt*2.2);
+  S.fov   += (1.7-S.fov)*Math.min(1, dt*4);
+
+  /* transmutation progress */
+  if(S.formNext >= 0){
+    S.morphT = Math.min(1, S.morphT + dt/7);
+    S.mix = S.morphT<0.5 ? 4*S.morphT*S.morphT*S.morphT : 1-Math.pow(-2*S.morphT+2,3)/2;
+    if(S.morphT >= 1){
+      S.form = S.formNext;
+      S.formNext = -1;
+      S.mix = 0;
+      S.flash = 1;               /* the arrival moment */
+      S.fov = 1.60;
+      if(S.queued >= 0){
+        const q = S.queued; S.queued = -1;
+        startMorph(q);
+      }
+    }
+  }
+
+  const breathe = 1 + 0.012*Math.sin(it*0.55) + S.pulse*0.04*Math.sin(it*9.0);
+
+  if(gl && U.uRes){
+    gl.uniform2f(U.uRes, cv.width, cv.height);
+    gl.uniform1f(U.uTime, it*timeScale);
+    gl.uniform1f(U.uYaw, iy);
+    gl.uniform1f(U.uPitch, ip);
+    gl.uniform1f(U.uDist, idist*breathe);
+    gl.uniform1f(U.uGlow, 1 + S.pulse*1.7 + S.flash*0.6);
+    gl.uniform1f(U.uFov, S.fov);
+    gl.uniform1f(U.uMix, (S.formNext >= 0) ? S.mix : 0);
+    gl.uniform1f(U.uFlash, S.flash);
+    gl.uniform1i(U.uFormA, S.form);
+    gl.uniform1i(U.uFormB, (S.formNext >= 0) ? S.formNext : -1);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  S.frames++;
+  hud(now);
+}
+
+/* ================= diagnostics hooks ================= */
+window.__check = () => ({
+  frames:S.frames, fps:Math.round(fps), w:cv.width, h:cv.height,
+  scale:+scale.toFixed(2),
+  dist:+S.dist.toFixed(2),
+  yaw:+S.yaw.toFixed(3), pitch:+S.pitch.toFixed(3),
+  form:S.form, formNext:S.formNext, morphT:+S.morphT.toFixed(2), formLabel:S.formLabel,
+  zen:S.zen, sound:sndOn, musicLive, gl:!!gl, err:failMsg,
+  secs:+((performance.now()-S.started)/1000).toFixed(1),
+});
+window.__toForm = n => {
+  S.form = ((n%NF)+NF)%NF;
+  S.formNext = -1;
+  S.mix = 0;
+  S.morphT = 1;
+  S.flash = 0;
+  S.queued = -1;
+  return S.formLabel = FORM_NAMES[S.form];
+};
+window.__morphTo = n => { startMorph(n); return S.formNext; };
+
+setStatus('starting\u2026');
+requestAnimationFrame(() => { requestAnimationFrame(() => {
+  try{
+    setStatus('initializing WebGL\u2026');
+    bootGL();
+    fit();
+    setStatus(gl ? 'running' : 'WebGL unavailable \u2014 fallback view');
+    if(sndOn) audioStart();
+  }catch(err){
+    setStatus('init failed: '+(err && err.message || err));
+  }
+  requestAnimationFrame(frame);
+}); });
+})();
+</script>
+</body>
+</html>
