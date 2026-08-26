@@ -195,7 +195,7 @@
 <footer id="ft" class="ui">
   <span>ZERO IMAGES · ZERO LIBRARIES · GENERATIVE SCORE</span>
   <span class="right">
-    <button id="snd" class="on">◆ sound on</button>
+    <button id="snd">◇ sound off</button>
     <button id="fs">⛶ fullscreen</button>
   </span>
 </footer>
@@ -298,7 +298,7 @@ vec2 pyramidDE(vec3 p){
   float s = 1.25;
   float h = 1.2;
   vec3 q = p / s;
-  q.y -= h*0.5;
+  q.y += h*0.5;
   float d = sdPyramid(q, h);
   float tr = clamp(0.45 + 0.55*smoothstep(-0.75, 0.75, p.y), 0.0, 1.0);
   return vec2(d*s, tr);
@@ -616,9 +616,9 @@ function fit(){
 addEventListener('resize', fit);
 
 /* ================= procedural score (WebAudio, zero payload) ================= */
-let AC = null, master = null, sndOn = true, musicLive = false;
-/* --- "Oxygène"-style analog sequencer (original composition, E minor @112) --- */
-const BPM = 112, STEP = 60/BPM/2;
+let AC = null, master = null, sndOn = false, musicLive = false;
+/* --- "Oxygène"-style analog sequencer (original composition, E minor @120) --- */
+const BPM = 120, STEP = 60/BPM/2;
 const nf = m => 440*Math.pow(2,(m-69)/12);
 const BASS = [40,47,52,47,43,47,52,47,  36,43,48,43,40,43,48,43];
 const LEAD = [59,-1,64,-1,67,66,64,-1,  62,-1,59,-1,64,62,59,-1];
