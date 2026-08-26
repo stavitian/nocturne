@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#030304">
-<title>SANCTVM — six living geometries</title>
+<title>SANCTVM — seven living geometries</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='9' y='9' width='14' height='14' fill='%23e9c37c' transform='rotate(45 16 16)'/%3E%3C/svg%3E">
 <style>
   :root{
@@ -217,8 +217,8 @@ const LITE = /lite=1/.test(location.search) || /[#&]lite/.test(location.hash);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ================= state ================= */
-const NF = 6;
-const FORM_NAMES = ['MANDELBULB','MENGER CATHEDRAL','SIERPINSKI FLAME','APOLLONIAN VEIL','JULIA SENTINEL','GYROID RELIQUARY'];
+const NF = 7;
+const FORM_NAMES = ['MANDELBULB','MENGER CATHEDRAL','SIERPINSKI FLAME','APOLLONIAN VEIL','JULIA SENTINEL','GYROID RELIQUARY','E8 RELIQUARY'];
 const S = {
   yaw:-0.55, pitch:0.42, dist:2.9,
   vyaw:0, vpitch:0,
@@ -379,6 +379,42 @@ vec2 gyroidDE(vec3 p){
   return vec2(d*0.75, clamp(abs(g)*1.5, 0.0, 1.0));
 }
 
+/* --- 6 · E8 reliquary (Coxeter-plane projection of the E8 root system) ---
+   All 240 roots projected to the Coxeter plane -> 30-fold rose of 8 rings;
+   inside each 12-degree sector the whole relic is just 2 rays x 4 beads,
+   so folding the azimuth makes the field exact AND dirt cheap.
+   Projection verified numerically: exact 30-fold rotational symmetry. */
+const vec3 E8_N = vec3(0.548630,-0.279303,-0.788032);
+const vec3 E8_U = vec3(-0.820693,0.000000,-0.571369);
+const vec3 E8_V = vec3(0.159585,0.960203,-0.229222);
+vec2 e8DE(vec3 p){
+  vec3 q = vec3(dot(p,E8_U), dot(p,E8_V), dot(p,E8_N));
+  float rr = length(q.xy);
+  /* fold azimuth into one 12-deg sector: the bead set is rotation-invariant,
+     so the distance to the folded representatives is the true distance */
+  vec2 P = rr*vec2(cos(mod(atan(q.y,q.x),0.20943951)), sin(mod(atan(q.y,q.x),0.20943951)));
+  vec2 dA = vec2(cos(0.036071),sin(0.036071));   /* ray A */
+  vec2 dB = vec2(cos(0.140790),sin(0.140790));   /* ray B */
+  float bd = min(
+    min(min(length(P-0.2906*dA),length(P-0.4703*dA)),
+        min(length(P-0.8592*dA),length(P-1.3903*dA))),
+    min(min(length(P-0.5782*dB),length(P-0.6989*dB)),
+        min(length(P-0.9354*dB),length(P-1.1309*dB))));
+  /* beads extruded along the normal — gives the relic its body */
+  float rods = length(vec3(P, q.z - clamp(q.z,-0.135,0.135))) - 0.052;
+  /* the 8 thin rings about the normal axis (radial profile shared => exact min) */
+  vec4 dq = min(vec4(rr)-vec4(0.2906,0.4703,0.8592,1.3903),
+                vec4(rr)-vec4(0.5782,0.6989,0.9354,1.1309));
+  vec2 tv = vec2(min(dq.x,min(dq.y,min(dq.z,dq.w))), abs(q.z)-0.026);
+  float tor = length(max(tv,0.0)) + min(max(tv.x,tv.y),0.0) - 0.018;
+  /* central pearl */
+  float hub = length(q) - 0.155;
+  float d = min(rods, min(tor, hub));
+  /* orbit trap: nodes glow gold, lattice stays indigo/violet */
+  float tr = clamp(exp(-bd*2.6)*0.95 + 0.22*smoothstep(0.14,0.05,rr), 0.0, 1.0);
+  return vec2(d*0.9, tr);
+}
+
 /* dispatcher: any form may blend into any other */
 vec2 formDE(int f, vec3 p){
   if(f == 1) return mengerDE(p);
@@ -386,6 +422,7 @@ vec2 formDE(int f, vec3 p){
   if(f == 3) return apollonianDE(p);
   if(f == 4) return juliaDE(p);
   if(f == 5) return gyroidDE(p);
+  if(f == 6) return e8DE(p);
   return bulbDE(p);
 }
 
@@ -640,7 +677,7 @@ addEventListener('resize', fit);
 
 /* ================= procedural score (WebAudio, zero payload) ================= */
 let AC = null, master = null, sndOn = true, musicLive = false;
-const ROOTS = [130.81, 146.83, 164.81, 123.47, 174.61, 155.56];
+const ROOTS = [130.81, 146.83, 164.81, 123.47, 174.61, 155.56, 146.83];
 function audioInit(){
   if(AC) return true;
   try{

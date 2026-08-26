@@ -9,7 +9,7 @@
 | Piece | What it is | Open |
 |---|---|---|
 | **NOCTURNE** (`index.html`) | A living night sky — procedural nebula, 2,000 stars, meteors | [live](https://stavitian.github.io/nocturne/) |
-| **SANCTVM** (`sanctum.html`) | A cathedral of pure mathematics — six ray-marched fractal forms that transmute into each other, with a generative ambient score | [live](https://stavitian.github.io/nocturne/sanctum.html) |
+| **SANCTVM** (`sanctum.html`) | A cathedral of pure mathematics — seven ray-marched forms (incl. the E8 root system in its Coxeter plane) that transmute into each other, with a generative ambient score | [live](https://stavitian.github.io/nocturne/sanctum.html) |
 | **SINGVLARIS** (`singvlaris.html`) | A black hole with real gravitational lensing — Schwarzschild null geodesics integrated per pixel, keplerian accretion disk, doppler beaming, a true-black shadow ringed by the photon sphere | [live](https://stavitian.github.io/nocturne/singvlaris.html) |
 
 All three are single files. All run anywhere. Zero images, zero libraries.
