@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOCTURNE — A Living Night Sky</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23e8c477'/%3E%3Ccircle cx='21' cy='12' r='11' fill='%2305070f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   NOCTURNE — design tokens
+   ============================================================ */
+:root{
+  --ink-0:#030409;
+  --ink-1:#05070f;
+  --ink-2:#0b1026;
+  --ink-3:#131a38;
+  --ink-4:#1d2750;
+  --mist:   rgba(214,222,255,.55);
+  --mist-2: rgba(160,175,220,.34);
+  --mist-3: rgba(120,138,190,.22);
+  --gold:#e8c477;
+  --gold-hi:#f7dfae;
+  --gold-dim:rgba(232,196,119,.14);
+  --hairline:rgba(200,212,255,.13);
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --sans:'Space Grotesk',ui-sans-serif,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink-1);
+  color:#dfe6ff;
+  font-family:var(--sans);
+  font-weight:300;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+::selection{background:rgba(232,196,119,.25);color:#fff}
+
+/* ---------- scrollbars ---------- */
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:var(--ink-0)}
+::-webkit-scrollbar-thumb{background:#1a2344;border-radius:5px;border:2px solid var(--ink-0)}
+::-webkit-scrollbar-thumb:hover{background:#2a3766}
+
+/* ============================================================
+   SCENE — fixed canvas backdrop
+   ============================================================ */
+#scene{
+  position:fixed;inset:0;z-index:0;
+  width:100vw;height:100vh;
+  background:var(--ink-1);
+  cursor:crosshair;
+}
+/* vignette + grain over the whole page */
+.vignette{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 42%, transparent 52%, rgba(2,3,8,.66) 100%);
+}
+.grain{
+  position:fixed;inset:-100px;z-index:60;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:grainShift 1.1s steps(4) infinite;
+}
+@keyframes grainShift{
+  0%{transform:translate(0,0)} 25%{transform:translate(-40px,30px)}
+  50%{transform:translate(30px,-45px)} 75%{transform:translate(-25px,-20px)}
+  100%{transform:translate(0,0)}
+}
+
+/* ============================================================
+   PROGRESS RAIL
+   ============================================================ */
+.progress-rail{
+  position:fixed;top:0;left:0;bottom:0;width:3px;z-index:50;
+  background:var(--hairline);
+}
+.progress-fill{
+  width:100%;height:0%;
+  background:linear-gradient(180deg,var(--gold),#b48a3f);
+  box-shadow:0 0 12px rgba(232,196,119,.55);
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:40;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:26px clamp(24px,4.5vw,72px);
+  mix-blend-mode:normal;
+}
+.brand{
+  display:flex;align-items:center;gap:16px;
+  font-family:var(--sans);font-weight:500;
+  letter-spacing:.42em;font-size:12px;text-transform:uppercase;color:#eef2ff;
+}
+.moon{
+  width:30px;height:30px;border-radius:50%;position:relative;flex:none;
+  background:
+    radial-gradient(circle at 36% 32%, #fffbe9 0%, #efe3bd 28%, #d9c48d 55%, #a98f56 82%, #6d5a33 100%);
+  box-shadow:
+    0 0 18px rgba(240,225,170,.35),
+    0 0 46px rgba(232,196,119,.18),
+    inset -5px -4px 10px rgba(80,62,28,.55);
+  animation:moonBreathe 7s ease-in-out infinite;
+}
+@keyframes moonBreathe{
+  0%,100%{box-shadow:0 0 18px rgba(240,225,170,.35),0 0 46px rgba(232,196,119,.18),inset -5px -4px 10px rgba(80,62,28,.55)}
+  50%{box-shadow:0 0 26px rgba(240,225,170,.5),0 0 64px rgba(232,196,119,.26),inset -5px -4px 10px rgba(80,62,28,.55)}
+}
+.moon::after{ /* crater hint */
+  content:"";position:absolute;width:7px;height:7px;border-radius:50%;
+  left:19px;top:8px;background:rgba(105,86,44,.5);
+  box-shadow:9px 11px 0 -2px rgba(105,86,44,.4);
+}
+nav{display:flex;gap:clamp(18px,3vw,40px)}
+nav a{
+  color:var(--mist-2);text-decoration:none;font-size:11px;
+  letter-spacing:.3em;text-transform:uppercase;font-weight:400;
+  position:relative;padding:6px 2px;transition:color .5s var(--ease);
+}
+nav a::after{
+  content:"";position:absolute;left:0;right:100%;bottom:0;height:1px;
+  background:var(--gold);transition:right .55s var(--ease);
+}
+nav a:hover{color:var(--gold-hi)}
+nav a:hover::after{right:0}
+nav a:focus-visible,a:focus-visible,button:focus-visible{
+  outline:1px solid var(--gold);outline-offset:4px;border-radius:2px;
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero{
+  min-height:100svh;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 clamp(24px,4.5vw,72px) clamp(48px,7vh,84px);
+  position:relative;z-index:5;
+}
+.hero-kicker{
+  display:flex;align-items:center;gap:18px;margin-bottom:clamp(18px,3vh,30px);
+  opacity:0;animation:riseIn 1.4s var(--ease) .15s forwards;
+}
+.kicker-line{width:64px;height:1px;background:linear-gradient(90deg,var(--gold),transparent)}
+.hero-kicker span{
+  font-size:11px;letter-spacing:.5em;text-transform:uppercase;
+  color:var(--gold);font-weight:400;
+}
+.hero h1{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(64px,13.5vw,208px);
+  line-height:.92;letter-spacing:-.015em;color:#f4f7ff;
+  text-wrap:balance;
+}
+.h1-row{display:block;overflow:hidden;padding-bottom:.06em;margin-bottom:-.06em}
+.h1-inner{display:block;transform:translateY(115%) rotate(3.5deg);animation:h1Rise 1.5s var(--ease) forwards}
+.h1-row:nth-child(1) .h1-inner{animation-delay:.25s}
+.h1-row:nth-child(2) .h1-inner{animation-delay:.4s}
+.h1-row:nth-child(2){padding-left:clamp(0px,7vw,150px)}
+@keyframes h1Rise{
+  from{transform:translateY(115%) rotate(3.5deg)}
+  to{transform:translateY(0) rotate(0deg)}
+}
+.gold-sweep{
+  font-style:italic;font-weight:400;
+  background:linear-gradient(100deg,
+    #caa45e 0%,#f7e3ae 22%,#fffbe9 38%,#f7e3ae 54%,#caa45e 74%,#f0d79a 100%);
+  background-size:260% 100%;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  animation:sweep 6.5s ease-in-out infinite alternate;
+}
+@keyframes sweep{
+  from{background-position:0% 50%}
+  to{background-position:100% 50}}
+.hero-sub{
+  max-width:520px;margin-top:clamp(26px,4vh,42px);
+  font-size:clamp(15px,1.25vw,17.5px);line-height:1.75;color:var(--mist);
+  opacity:0;animation:riseIn 1.4s var(--ease) .95s forwards;
+}
+@keyframes riseIn{
+  from{opacity:0;transform:translateY(26px)}
+  to{opacity:1;transform:translateY(0)}}
+.hero-sub em{font-style:normal;color:var(--gold-hi)}
+.hero-cta{margin-top:clamp(30px,4.5vh,48px);opacity:0;animation:riseIn 1.4s var(--ease) 1.2s forwards;display:flex;gap:16px;flex-wrap:wrap}
+.btn{
+  appearance:none;border:none;cursor:pointer;font-family:var(--sans);
+  font-size:12px;letter-spacing:.32em;text-transform:uppercase;font-weight:500;
+  padding:17px 34px;border-radius:999px;transition:.5s var(--ease);
+}
+.btn-primary{
+  background:linear-gradient(135deg,#f2d694,#d9ad5c);
+  color:#171203;
+  box-shadow:0 8px 30px rgba(232,196,119,.28),inset 0 1px 0 rgba(255,255,255,.65);
+}
+.btn-primary:hover{
+  transform:translateY(-2px);
+  box-shadow:0 14px 44px rgba(232,196,119,.44),inset 0 1px 0 rgba(255,255,255,.7);
+}
+.btn-primary:active{transform:translateY(0) scale(.985)}
+.btn-ghost{
+  background:transparent;color:var(--gold-hi);
+  border:1px solid rgba(232,196,119,.38);
+}
+.btn-ghost:hover{border-color:var(--gold);background:var(--gold-dim)}
+
+/* scroll cue */
+.scroll-cue{
+  position:absolute;right:clamp(24px,4.5vw,72px);bottom:clamp(48px,7vh,84px);
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  opacity:0;animation:riseIn 1.4s var(--ease) 1.6s forwards;
+}
+.cue-label{writing-mode:vertical-rl;font-size:10px;letter-spacing:.42em;text-transform:uppercase;color:var(--mist-3)}
+.cue-track{width:1px;height:76px;background:var(--hairline);overflow:hidden;position:relative}
+.cue-dot{
+  position:absolute;left:0;top:-30%;
+  width:1px;height:30%;background:var(--gold);
+  animation:cueFall 2.4s var(--ease) infinite;
+}
+@keyframes cueFall{
+  0%{top:-30%} 70%,100%{top:110%}}
+
+/* hero corner coordinates */
+.coords{
+  position:absolute;left:clamp(24px,4.5vw,72px);top:calc(clamp(48px,7vh,84px) + 96px);
+  font-family:var(--mono);font-size:10px;line-height:2;color:var(--mist-3);
+  letter-spacing:.08em;
+  opacity:0;animation:riseIn 1.4s var(--ease) 1.4s forwards;
+}
+.coords b{color:var(--gold);font-weight:500}
+
+/* ============================================================
+   SECTION SHELL
+   ============================================================ */
+section{position:relative;z-index:5;padding:clamp(90px,14vh,170px) clamp(24px,4.5vw,72px)}
+.section-head{display:flex;align-items:baseline;gap:26px;margin-bottom:clamp(44px,7vh,76px)}
+.section-index{
+  font-family:var(--mono);font-size:11px;color:var(--gold);
+  border:1px solid rgba(232,196,119,.3);border-radius:999px;
+  padding:6px 14px;letter-spacing:.18em;white-space:nowrap;
+}
+.section-title{
+  font-family:var(--serif);font-weight:300;font-size:clamp(30px,4.2vw,58px);
+  line-height:1.05;color:#eef2ff;letter-spacing:-.01em;
+}
+.section-sub{
+  margin-left:auto;max-width:300px;font-size:13px;line-height:1.7;color:var(--mist-2);
+  text-align:right;display:none;
+}
+@media(min-width:900px){.section-sub{display:block}}
+
+.reveal{opacity:0;transform:translateY(44px);transition:opacity 1.1s var(--ease),transform 1.1s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}.d4{transition-delay:.32s}
+
+/* ============================================================
+   CHAPTERS
+   ============================================================ */
+.chapter{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:clamp(36px,6vw,110px);align-items:center;
+  padding:clamp(56px,9vh,110px) 0;
+  border-top:1px solid var(--hairline);
+}
+.chapter:first-of-type{border-top:none;padding-top:0}
+.chapter:last-of-type{padding-bottom:0}
+.chapter-num{
+  font-family:var(--mono);font-size:11px;letter-spacing:.3em;
+  color:var(--gold);margin-bottom:22px;
+}
+.chapter h3{
+  font-family:var(--serif);font-weight:300;font-size:clamp(34px,4vw,56px);
+  line-height:1.04;color:#f2f5ff;margin-bottom:24px;letter-spacing:-.01em;text-wrap:pretty;
+}
+.chapter h3 em{font-style:italic;color:var(--gold-hi)}
+.chapter p{max-width:480px;font-size:15.5px;line-height:1.85;color:var(--mist)}
+.chapter p + p{margin-top:16px}
+.chapter.flip .ch-media{order:-1}
+@media(max-width:900px){
+  .chapter{grid-template-columns:1fr}
+  .chapter.flip .ch-media{order:0}
+}
+.orb{
+  width:min(100%,420px);aspect-ratio:1;border-radius:50%;margin-inline:auto;position:relative;
+}
+.orb::before{
+  content:"";position:absolute;inset:-14%;
+  background:radial-gradient(circle,var(--orb-glow,rgba(122,146,255,.2)) 0%,transparent 68%);
+}
+.orb-core{
+  position:absolute;inset:0;border-radius:50%;
+  transition:transform 1.2s var(--ease);
+}
+.orb:hover .orb-core{transform:scale(1.035) rotate(2deg)}
+.orb-ring{
+  position:absolute;border-radius:50%;border:1px solid var(--hairline);
+  inset:-11%;animation:slowSpin 46s linear infinite;
+}
+.orb-ring.r2{inset:-22%;border-style:dashed;animation-duration:80s;animation-direction:reverse;opacity:.6}
+@keyframes slowSpin{to{transform:rotate(360deg)}}
+.orb-ring::before{
+  content:"";position:absolute;top:-4px;left:50%;
+  width:7px;height:7px;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 12px rgba(232,196,119,.8);
+}
+.ch-list{list-style:none;margin-top:28px}
+.ch-list li{
+  display:flex;gap:14px;align-items:baseline;
+  padding:11px 0;border-top:1px dashed rgba(200,212,255,.09);
+  font-size:13.5px;color:var(--mist-2);
+}
+.ch-list li::before{content:"✦";color:var(--gold);font-size:10px}
+.ch-list li strong{color:#e6ecff;font-weight:500}
+
+/* ============================================================
+   QUOTE / INTERLUDE
+   ============================================================ */
+.interlude{text-align:left;position:relative}
+.interlude blockquote{
+  font-family:var(--serif);font-weight:300;font-style:italic;
+  font-size:clamp(28px,4.6vw,62px);line-height:1.22;color:#edf1ff;
+  max-width:21ch;text-wrap:balance;
+}
+.interlude blockquote em{color:var(--gold-hi)}
+.interlude cite{
+  display:block;margin-top:34px;font-family:var(--sans);font-style:normal;
+  font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--mist-3);
+}
+.interlude .big-quote{
+  position:absolute;top:-30px;left:-10px;font-family:var(--serif);
+  font-size:clamp(140px,22vw,320px);line-height:1;color:rgba(232,196,119,.07);
+  pointer-events:none;user-select:none;font-style:normal;
+}
+
+/* ============================================================
+   GALLERY
+   ============================================================ */
+.gallery-grid{
+  display:grid;grid-template-columns:repeat(12,1fr);
+  gap:clamp(16px,2vw,26px);
+}
+.g-item{
+  position:relative;border-radius:18px;overflow:hidden;
+  border:1px solid var(--hairline);
+  aspect-ratio:var(--ar,4/3);
+  transform:translateZ(0);transition:transform .8s var(--ease),border-color .8s var(--ease);
+}
+.g-item:hover{transform:translateY(-6px);border-color:rgba(232,196,119,.4)}
+.g-item.wide{grid-column:span 7}
+.g-item.tall{grid-column:span 5}
+.g-item.small-a,.g-item.small-b{grid-column:span 6}
+@media(max-width:760px){
+  .g-item.wide,.g-item.tall,.g-item.small-a,.g-item.small-b{grid-column:span 12}
+}
+.g-item canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:transform 6s var(--ease)}
+.g-item:hover canvas{transform:scale(1.08)}
+.g-meta{
+  position:absolute;left:18px;right:18px;bottom:14px;z-index:3;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
+}
+.g-name{font-family:var(--serif);font-style:italic;font-size:20px;color:#f4f6ff;text-shadow:0 2px 18px rgba(0,0,0,.8)}
+.g-tag{font-family:var(--mono);font-size:10px;color:var(--gold);letter-spacing:.16em;white-space:nowrap}
+.g-item::after{ /* bottom scrim so labels stay readable */
+  content:"";position:absolute;inset:auto 0 0 0;height:45%;
+  background:linear-gradient(180deg,transparent,rgba(3,4,10,.78));pointer-events:none;
+}
+
+/* ============================================================
+   FINALE CTA
+   ============================================================ */
+.finale{text-align:center;padding-bottom:clamp(70px,10vh,120px)}
+.finale h2{
+  font-family:var(--serif);font-weight:300;font-size:clamp(44px,7vw,104px);
+  line-height:1.02;color:#f4f7ff;letter-spacing:-.015em;text-wrap:balance;
+}
+.finale h2 em{font-style:italic}
+.finale p{margin:30px auto 0;max-width:460px;color:var(--mist);line-height:1.8;font-size:15.5px}
+.finale .hero-cta{justify-content:center;margin-top:44px}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+footer{
+  position:relative;z-index:5;
+  border-top:1px solid var(--hairline);
+  padding:34px clamp(24px,4.5vw,72px);
+  display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--mist-3);
+}
+footer .f-brand{display:flex;align-items:center;gap:12px}
+footer .f-moon{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6da,#caa45e);box-shadow:0 0 8px rgba(232,196,119,.5)}
+.f-links{display:flex;gap:26px}
+.f-links a{color:var(--mist-2);text-decoration:none;transition:color .4s}
+.f-links a:hover{color:var(--gold-hi)}
+
+/* ============================================================
+   HUD (live readouts)
+   ============================================================ */
+.hud{
+  position:fixed;right:clamp(18px,2.6vw,40px);top:50%;transform:translateY(-50%);
+  z-index:40;display:flex;flex-direction:column;gap:22px;align-items:flex-end;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  color:var(--mist-3);pointer-events:none;
+  opacity:0;animation:fadeIn 2s ease 2.4s forwards;
+}
+@keyframes fadeIn{to{opacity:1}}
+.hud-item{display:flex;align-items:center;gap:10px;transition:color .4s}
+.hud-item b{color:var(--gold);font-weight:500;font-size:10.5px;min-width:52px;text-align:right}
+.hud-line{width:26px;height:1px;background:var(--hairline)}
+@media(max-width:1100px){.hud{display:none}}
+
+/* ============================================================
+   HINT TOAST
+   ============================================================ */
+.toast{
+  position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+  z-index:55;background:rgba(8,11,24,.82);
+  border:1px solid var(--hairline);backdrop-filter:blur(12px);
+  border-radius:999px;padding:12px 26px;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-hi);
+  opacity:0;transition:.8s var(--ease);pointer-events:none;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important}
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none}
+  .hero-kicker,.hero-sub,.hero-cta,.scroll-cue,.coords,.hud{opacity:1;animation:none}
+  .h1-inner{transform:none;animation:none}
+  .cue-dot,.grain{display:none}
+}
+</style>
+</head>
+<body>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="progress-rail" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+
+<header>
+  <div class="brand"><span class="moon" aria-hidden="true"></span><span>NOCTURNE</span></div>
+  <nav aria-label="Sections">
+    <a href="#chapters">Chapters</a>
+    <a href="#gallery">Gallery</a>
+    <a href="#finale">Begin</a>
+  </nav>
+</header>
+
+<main>
+  <!-- ================= HERO ================= -->
+  <section class="hero" style="padding-top:0">
+    <div class="coords" aria-hidden="true">
+      LAT <b>−34.6037</b> · LON <b>−58.3816</b><br>
+      MAG&nbsp;LIMIT&nbsp;<b>6.5</b> · SEEING&nbsp;<b>I</b>
+    </div>
+    <div class="hero-kicker">
+      <span class="kicker-line" aria-hidden="true"></span>
+      <span>An interactive night, rendered live</span>
+    </div>
+    <h1>
+      <span class="h1-row"><span class="h1-inner">The night is</span></span>
+      <span class="h1-row"><span class="h1-inner gold-sweep">not silent.</span></span>
+    </h1>
+    <p class="hero-sub">
+      Two thousand stars breathe above a drifting nebula. Move your cursor to stir the
+      <em>solar wind</em>, click anywhere to loose a falling star — the sky answers back.
+    </p>
+    <div class="hero-cta">
+      <button class="btn btn-primary" id="wishBtn">Make a wish</button>
+      <button class="btn btn-ghost" id="rainBtn">Star rain</button>
+      <button class="btn btn-ghost" id="calmBtn">Stillness</button>
+    </div>
+    <div class="scroll-cue" aria-hidden="true">
+      <span class="cue-label">Scroll</span>
+      <div class="cue-track"><div class="cue-dot"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= CHAPTERS ================= -->
+  <section id="chapters" style="padding-top:0">
+    <div class="section-head reveal">
+      <span class="section-index">I — II — III</span>
+      <h2 class="section-title">Three hours of dark</h2>
+      <p class="section-sub">A short field guide to what the sky is doing while the city sleeps.</p>
+    </div>
+
+    <article class="chapter reveal">
+      <div class="ch-copy">
+        <div class="chapter-num">CHAPTER I · 23:00</div>
+        <h3>The first hour belongs to <em>vapor</em></h3>
+        <p>
+          The nebula is not burning — it is remembering. Ancient light scattered through dust until
+          it learned to glow in colors no eye named for centuries.
+        </p>
+        <ul class="ch-list">
+          <li><strong>Filaments</strong>&nbsp;— ionized veils a hundred light-years wide</li>
+          <li><strong>Palette</strong>&nbsp;— hydrogen rose, oxygen teal, starlight cream</li>
+        </ul>
+      </div>
+      <div class="ch-media">
+        <div class="orb" style="--orb-glow:rgba(255,138,168,.22)">
+          <div class="orb-ring"></div><div class="orb-ring r2"></div>
+          <div class="orb-core" style="background:
+            radial-gradient(circle at 34% 30%, #ffd9e4 0%, #ff8aa8 26%, #c94f7c 52%, #6e2350 78%, #2a0f2e 100%);
+            box-shadow:0 0 60px rgba(255,138,168,.35), inset -18px -14px 44px rgba(20,4,26,.7)"></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="chapter flip reveal">
+      <div class="ch-copy">
+        <div class="chapter-num">CHAPTER II · 01:00</div>
+        <h3>The second hour is <em>gravity's</em> hour</h3>
+        <p>
+          Every falling star is small debris meeting air at eleven miles per second. What you wish
+          on is a grain of a comet, signing its name in fire across eighty miles of sky.
+        </p>
+        <ul class="ch-list">
+          <li><strong>Velocity</strong>&nbsp;— ~11–72 km/s, gone in under a second</li>
+          <li><strong>Rhythm</strong>&nbsp;— the quiet minutes between are part of the show</li>
+        </ul>
+      </div>
+      <div class="ch-media">
+        <div class="orb" style="--orb-glow:rgba(126,231,255,.2)">
+          <div class="orb-ring"></div><div class="orb-ring r2"></div>
+          <div class="orb-core" style="background:
+            radial-gradient(circle at 32% 28%, #eafcff 0%, #7ee7ff 30%, #2f9dd0 55%, #143a6e 80%, #071228 100%);
+            box-shadow:0 0 60px rgba(126,231,255,.32), inset -18px -14px 44px rgba(4,10,26,.75)"></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="chapter reveal">
+      <div class="ch-copy">
+        <div class="chapter-num">CHAPTER III · 03:00</div>
+        <h3>The last hour is <em>yours</em></h3>
+        <p>
+          By three the horizon has turned over without moving. The same stars, a different sky.
+          Astronomers call it seeing; insomniacs call it company.
+        </p>
+      </div>
+      <div class="ch-media">
+        <div class="orb" style="--orb-glow:rgba(232,196,119,.22)">
+          <div class="orb-ring"></div><div class="orb-ring r2"></div>
+            <div class="orb-core" style="background:
+              radial-gradient(circle at 36% 30%, #fff8e2 0%, #eed49a 30%, #c99b4e 56%, #7a5722 80%, #241a08 100%);
+              box-shadow:0 0 60px rgba(232,196,119,.35), inset -18px -14px 44px rgba(26,18,6,.7)"></div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ================= INTERLUDE ================= -->
+  <section class="interlude">
+    <span class="big-quote" aria-hidden="true">“</span>
+    <blockquote class="reveal">
+      The stars went out one by one, like lamps in a city going to sleep — and still the sky kept
+      <em>breathing.</em>
+    </blockquote>
+    <cite class="reveal d1">— Field notes, observatory log, 03:47</cite>
+  </section>
+
+  <!-- ================= GALLERY ================= -->
+  <section id="gallery">
+    <div class="section-head reveal">
+      <span class="index section-index">IV</span>
+      <h2 class="section-title">The gallery of skies</h2>
+      <p class="section-sub">Four skies, each simulated live at sixty frames a second. Hover to lean closer.</p>
+    </div>
+    <div class="gallery-grid">
+      <div class="g-item wide" style="--ar:16/10" data-preset="rose"><canvas></canvas>
+        <div class="g-meta"><span class="g-name">Rose Nebula</span><span class="g-tag">H-II REGION</span></div>
+      </div>
+      <div class="g-item tall" style="--ar:3/4" data-preset="teal"><canvas></canvas>
+        <div class="g-meta"><span class="g-name">Cold Sea</span><span class="g-tag">REFLECTION</span></div>
+      </div>
+      <div class="g-item small-a" style="--ar:4/3" data-preset="ember"><canvas></canvas>
+        <div class="g-meta"><span class="g-name">Ember Drift</span><span class="g-tag">EMISSION</span></div>
+      </div>
+      <div class="g-item small-b" style="--ar:4/3" data-preset="violet"><canvas></canvas>
+        <div class="g-meta"><span class="g-name">Violet Hour</span><span class="g-tag">DARK NEBULA</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FINALE ================= -->
+  <section id="finale" class="finale">
+    <h2 class="reveal">Go outside.<br><em>Look up tonight.</em></h2>
+    <p class="reveal d1">
+      The best instrument ever pointed at the sky costs nothing, requires no setup,
+      and fits behind your eyes.
+    </p>
+    <div class="hero-cta reveal d2">
+      <button class="btn btn-primary" id="wishBtn2">Make a wish</button>
+      <button class="btn btn-ghost" id="rainBtn2">Star rain</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="f-brand"><span class="f-moon" aria-hidden="true"></span><span>NOCTURNE · MMXXVI</span></div>
+  <div class="f-links">
+    <a href="#" id="fsLink">Fullscreen</a>
+    <a href="#" id="pauseLink">Pause motion</a>
+  </div>
+  <div>RENDERED LIVE IN YOUR BROWSER · NO IMAGES WERE HARMED</div>
+</footer>
+
+<div class="hud" aria-hidden="true">
+  <div class="hud-item"><span>STARS</span><span class="hud-line"></span><b id="hudStars">—</b></div>
+  <div class="hud-item"><span>FPS</span><span class="hud-line"></span><b id="hudFps">—</b></div>
+  <div class="hud-item"><span>WISHES</span><span class="hud-line"></span><b id="hudWishes">0</b></div>
+  <div class="hud-item"><span>CLOCK</span><span class="hud-line"></span><b id="hudClock">—</b></div>
+</div>
+
+<div class="toast" id="toast">click the sky · make it fall</div>
+
+<script>
+'use strict';
+/* ================================================================
+   NOCTURNE engine
+   - WebGL nebula sky: fbm clouds, 2000 point sprites, shooting stars
+   - Pointer = solar wind; click = ripple + meteor burst
+   - Scroll drives camera zoom/tilt; IO reveals; live HUD
+   ================================================================ */
+
+const $  = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const lerp = (a,b,t)=>a+(b-a)*t;
+
+/* ---------------- global state ---------------- */
+const S = {
+  mouse:{x:.5,y:.5,tx:.5,ty:.5},
+  scroll:0, scrollT:0,
+  wishes:0,
+  excite:0,
+  paused:false,
+  reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  visible:true
+};
+/* time scaling for reduced motion: sky crawls instead of dancing */
+const timeScale = S.reduced ? .12 : 1;
+
+/* ---------------- toast ---------------- */
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ================================================================
+   SHADERS
+   ================================================================ */
+const VERT = `
+attribute vec2 aPos;
+void main(){ gl_Position=vec4(aPos,0.,1.); }`;
+
+const FRAG_SKY = `
+precision highp float;
+uniform vec2  uRes;
+uniform float uTime;
+uniform vec2  uMouse;     // smoothed, 0..1
+uniform float uScroll;    // 0..~2
+uniform float uZoom;      // extra zoom from finale proximity
+uniform float uEnergy;    // 0 calm .. 1 excited (star rain)
+#define PI 3.14159265
+
+// --- hash & noise ---
+float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
+float noise(vec2 p){
+  vec2 i=floor(p), f=fract(p);
+  vec2 u=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),
+             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);
+}
+float fbm(vec2 p){
+  float v=0., a=.5;
+  mat2 rot=mat2(.8,.6,-.6,.8);
+  for(int i=0;i<6;i++){ v+=a*noise(p); p=rot*p*2.02+11.5; a*=.55; }
+  return v;
+}
+
+// --- layered star fields ---
+float starLayer(vec2 uv, float density, float size, float twinkleSpeed, float seed){
+  vec2 grid=uv*density;
+  vec2 cell=floor(grid), f=fract(grid)-.5;
+  float acc=0.;
+  for(int y=-1;y<=1;y++){
+    for(int x=-1;x<=1;x++){
+      vec2 o=vec2(float(x),float(y));
+      vec2 cid=cell+o;
+      if(cid.y<-0.) continue;               // keep grid cells deterministic
+      float h1=hash(cid+seed);
+      if(h1>.14) continue;                  // sparse occupancy (~14%)
+      vec2 pos=(vec2(hash(cid+seed+2.),hash(cid+seed+3.))-.5)*.8;
+      float dist=length(f-o-pos);
+      float mag=hash(cid+seed+7.);
+      float br=.35+.65*pow(mag,3.);
+      float tw=.65+.35*sin(uTime*twinkleSpeed*(0.5+mag)+mag*6.2831);
+      float s=size*(0.5+mag);
+      acc+=br*tw*exp(-dist*dist/(s*s));
+    }
+  }
+  return acc;
+}
+
+// --- shooting star ---
+float meteor(vec2 uv, vec2 origin, vec2 dir, float len, float prog, float thick){
+  // prog: 0..1 along its flight
+  vec2 head=origin+dir*len*prog;
+  vec2 rel=head-uv;
+  float along=dot(rel,dir);
+  float tail=min(along,len*.55)/ (len*.55);       // 0 at head .. 1 at tail tip
+  float d=length(rel-dir*max(along,0.));
+  float fade=sin(prog*PI);                         // bright mid-flight
+  float core=fade*exp(-d*d/(thick*thick))*smoothstep(0.,.15,tail+.001);
+  float streak=fade*exp(-d*d/(thick*thick*9.))*(1.-tail)*.55;
+  return core+streak;
+}
+
+void main(){
+  vec2 frag=gl_FragCoord.xy/uRes;
+  vec2 uv=(gl_FragCoord.xy-.5*uRes)/uRes.y;      // centered, aspect-correct
+
+  float t=uTime;
+
+  /* ---- camera: pointer sway + scroll tilt/zoom ---- */
+  vec2 sway=uMouse*vec2(.045,.03);
+  uv+=sway;
+  uv*=1.-uScroll*.16;                            // gentle push-in as you scroll
+  uv*= (1.-uZoom*.35);
+
+  /* ---- base gradient ---- */
+  vec3 col=mix(vec3(.008,.010,.024),vec3(.030,.043,.102),smoothstep(-.2,.85,frag.y));
+
+  /* ---- nebula: two drifting fbm fields ---- */
+  vec2 np=uv*1.7+vec2(t*.008,t*.004);
+  float n1=fbm(np+fbm(np*1.9+t*.01)*.85);
+  float n2=fbm(np*.62-vec2(t*.006,t*.002)+3.7);
+  float neb=n1*n2*1.9;
+  neb=pow(neb,1.35);
+
+  vec3 cA=vec3(.28,.16,.42);   // violet veil
+  vec3 cB=vec3(.10,.22,.38);   // cold blue
+  vec3 cC=vec3(.42,.26,.18);   // warm ember dust
+  float wArm=smoothstep(.35,.85,n2)*smoothstep(-.4,.6,uv.x);
+  vec3 nebCol=cA*n1+cB*(1.-n1)*.9+cC*wArm*.55;
+  col+=nebCol*neb*1.15;
+
+  /* ---- pointer aurora glow ---- */
+  vec2 mpos=(uMouse-.5)*vec2(uRes.x/uRes.y,1.)*1.9;
+  mpos.x*=-1.;                                   // match sway direction
+  float md=length(uv-mpos);
+  float glow=exp(-md*md*2.6);
+  col+=vec3(.10,.13,.26)*glow*.9;
+  col+=vec3(.35,.28,.16)*glow*glow*.35*uEnergy;  // warmer when excited
+
+  /* ---- star layers ---- */
+  vec2 suv=uv*1.35;
+  float st=0.;
+  st+=starLayer(suv, 26., .055, 1.4, 0.);        // far dust
+  st+=starLayer(suv, 14., .090, 1.1, 40.);       // mid field
+  st+=starLayer(suv, 7.5,.150, 0.8, 90.);        // near bright
+  col+=st*vec3(.92,.96,1.);
+
+  /* ---- shooting stars ---- */
+  for(int i=0;i<4;i++){
+    float fi=float(i);
+    float period=6.+fi*2.3;
+    float ph=mod(t+fi*2.17,period)/period;       // 0..1 life
+    float active=step(ph,.42);                    // only first 42% visible
+    if(active>.5){
+      vec2 org=vec2(mix(-.15,1.15,hash(vec2(fi,1.))),
+                    mix(.35,1.25, hash(vec2(fi,2.))));
+      float ang=mix(.55,1.05,hash(vec2(fi,3.)));  // down-left diagonal
+      vec2 dir=normalize(vec2(cos(ang),-sin(ang)));
+      float len=mix(.5,.9,hash(vec2(fi,4.)));
+      col+=vec3(.95,.97,1.)*meteor(uv,org,dir,len,ph/.42,mix(.0035,.006,fract(fi*.618)));
+    }
+  }
+
+  /* ---- vignette & tone ---- */
+  float vig=smoothstep(1.45,.35,length(frag-.5)*1.55);
+  col*=vig;
+  col=col/(1.+col*.22);                           // soft filmic-ish shoulder
+  col=pow(col,vec3(.96));
+
+  gl_FragColor=vec4(col,1.);
+}`;
+
+/* gallery presets */
+const PRESETS={
+  rose:  {ca:[.42,.14,.24], cb:[.16,.08,.20], cc:[.30,.10,.14], dens:22, tint:[1.0,.82,.88]},
+  teal:  {ca:[.08,.26,.32], cb:[.06,.14,.30], cc:[.10,.20,.26], dens:30, tint:[.80,.95,1.0]},
+  ember: {ca:[.38,.20,.10], cb:[.16,.10,.08], cc:[.42,.24,.10], dens:18, tint:[1.0,.88,.70]},
+  violet:{ca:[.24,.14,.44], cb:[.10,.08,.26], cc:[.14,.10,.30], dens:26, tint:[.88,.82,1.0]}
+};
+const FRAG_TILE = `
+precision highp float;
+uniform vec2  uRes;
+uniform float uTime;
+uniform vec2  uMouse;
+uniform vec3  uCA,uCB,uCC,uTint;
+uniform float uDens;
+float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
+float noise(vec2 p){
+  vec2 i=floor(p), f=fract(p);
+  vec2 u=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),
+             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);
+}
+float fbm(vec2 p){
+  float v=0., a=.5;
+  mat2 rot=mat2(.8,.6,-.6,.8);
+  for(int i=0;i<5;i++){ v+=a*noise(p); p=rot*p*2.03+7.31; a*=.56; }
+  return v;
+}
+float starLayer(vec2 uv,float density,float seed){
+  vec2 grid=uv*density;
+  vec2 cell=floor(grid), f=fract(grid)-.5;
+  float acc=0.;
+  for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+    vec2 cid=cell+vec2(float(x),float(y));
+    float h1=hash(cid+seed);
+    if(h1>.12) continue;
+    vec2 pos=(vec2(hash(cid+seed+2.),hash(cid+seed+3.))-.5)*.8;
+    float dist=length(f-vec2(float(x),float(y))-pos);
+    float mag=hash(cid+seed+7.);
+    acc+=(.3+.7*pow(mag,3.))*(.6+.4*sin(uTime*(0.6+mag)+mag*6.2831))
+         *exp(-dist*dist/(.0009));
+  }
+  return acc;
+}
+void main(){
+  vec2 frag=gl_FragCoord.xy/uRes;
+  vec2 uv=(gl_FragCoord.xy-.5*uRes)/uRes.y;
+  float t=uTime*.55;
+  vec2 sway=(uMouse-.5)*.06;
+  uv+=sway;
+  uv*=1.25;
+
+  float n1=fbm(uv*1.9+t*.05+fbm(uv*2.6-t*.03)*.8);
+  float n2=fbm(uv*.8-t*.02+4.2);
+  float neb=pow(n1*n2*2.0,1.3);
+
+  vec3 col=mix(uCB*.35,uCA*.55,frag.y);
+  col+=mix(uCB,uCA,n1)*neb*1.25;
+  col+=uCC*pow(n2,2.2)*neb*.8;
+  col+=starLayer(uv*1.3,uDens,0.)*uTint;
+  col+=starLayer(uv*2.1,uDens*1.7,50.)*uTint*.7;
+
+  float vig=smoothstep(1.5,.3,length(frag-.5)*1.6);
+  col*=vig;
+  col=col/(1.+col*.25);
+  gl_FragColor=vec4(col,1.);
+}`;
+
+/* ================================================================
+   GL BOOTSTRAP (shared by all canvases)
+   ================================================================ */
+function compile(gl,type,src){
+  const sh=gl.createShader(type);
+  gl.shaderSource(sh,src);gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){
+    console.error(gl.getShaderInfoLog(sh));
+  }
+  return sh;
+}
+function makeProgram(gl,vsSrc,fsSrc){
+  const p=gl.createProgram();
+  gl.attachShader(p,compile(gl,gl.VERTEX_SHADER,vsSrc));
+  gl.attachShader(p,compile(gl,gl.FRAGMENT_SHADER,fsSrc));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)){
+    console.error(gl.getProgramInfoLog(p));
+  }
+  return p;
+}
+function quad(gl,program){
+  const buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(program,'aPos');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+}
+
+/* ---------------- main sky ---------------- */
+const skyCanvas=$('#scene');
+const skyGl=skyCanvas.getContext('webgl',{antialias:false,alpha:false,powerPreference:'high-performance'});
+let skyOK=false, skyU={};
+if(skyGl){
+  const prog=makeProgram(skyGl,VERT,FRAG_SKY);
+  if(prog && !skyGl.isContextLost()){
+    skyGl.useProgram(prog);
+    quad(skyGl,prog);
+    ['uRes','uTime','uMouse','uScroll','uZoom','uEnergy'].forEach(n=>skyU[n]=skyGl.getUniformLocation(prog,n));
+    skyOK=true;
+  }
+}
+if(!skyOK){ skyCanvas.style.background='radial-gradient(ellipse at 50% 30%, #10173a 0%, #05070f 70%)'; }
+
+/* ---------------- gallery tiles ---------------- */
+const tiles=[];
+$$('.g-item').forEach(item=>{
+  const cv=item.querySelector('canvas');
+  const gl=cv.getContext('webgl',{antialias:false,alpha:false});
+  if(!gl) return;
+  const preset=PRESETS[item.dataset.preset]||PRESETS.rose;
+  const prog=makeProgram(gl,VERT,FRAG_TILE);
+  if(!prog) return;
+  gl.useProgram(prog);
+  quad(gl,prog);
+  const U={};
+  ['uRes','uTime','uMouse','uCA','uCB','uCC','uDens','uTint'].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+  gl.uniform3fv(U.uCA,new Float32Array(preset.ca));
+  gl.uniform3fv(U.uCB,new Float32Array(preset.cb));
+  gl.uniform3fv(U.uCC,new Float32Array(preset.cc));
+  gl.uniform3fv(U.uTint,new Float32Array(preset.tint));
+  gl.uniform1f(U.uDens,preset.dens);
+  const T={cv,gl,U,item,mouse:{x:.5,y:.5},hover:false};
+  item.addEventListener('pointerenter',()=>{T.hover=true;});
+  item.addEventListener('pointerleave',()=>{T.hover=false;});
+  tiles.push(T);
+});
+
+/* ---------------- resize ---------------- */
+const DPR=Math.min(devicePixelRatio||1,2);
+function sizeAll(){
+  skyCanvas.width=Math.floor(innerWidth*DPR);
+  skyCanvas.height=Math.floor(innerHeight*DPR);
+  if(skyOK){
+    skyGl.viewport(0,0,skyCanvas.width,skyCanvas.height);
+    skyGl.uniform2f(skyU.uRes,skyCanvas.width,skyCanvas.height);
+  }
+  tiles.forEach(T=>{
+    const r=T.item.getBoundingClientRect();
+    T.cv.width=Math.max(2,Math.floor(r.width*DPR));
+    T.cv.height=Math.max(2,Math.floor(r.height*DPR));
+    T.gl.viewport(0,0,T.cv.width,T.cv.height);
+    T.gl.uniform2f(T.U.uRes,T.cv.width,T.cv.height);
+  });
+}
+addEventListener('resize',sizeAll);
+sizeAll();
+
+/* ================================================================
+   POINTER & INTERACTION
+   ================================================================ */
+addEventListener('pointermove',e=>{
+  S.mouse.tx=e.clientX/innerWidth;
+  S.mouse.ty=1-e.clientY/innerHeight;
+},{passive:true});
+
+/* click ripples on the DOM layer + wish counting */
+const ripples=[];
+function spawnRipple(x,y){
+  const el=document.createElement('div');
+  el.className='ripple';
+  el.style.left=x+'px';el.style.top=y+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1400);
+}
+document.body.addEventListener('click',e=>{
+  if(e.target.closest('a,button'))return;
+  S.wishes++;
+  $('#hudWishes').textContent=String(S.wishes).padStart(2,'0');
+  spawnRipple(e.clientX,e.clientY);
+  if(S.wishes===1)toast('the sky heard you');
+  if(S.wishes===7)toast('seven wishes — generous');
+  if(S.wishes===25)toast('at this rate, constellation status');
+});
+
+/* ================================================================
+   METEOR BURSTS (visual, via temporary CSS-free canvas overlay? -> use DOM sparks)
+   ================================================================ */
+function burst(x,y,n=14){
+  for(let i=0;i<n;i++){
+    const s=document.createElement('div');
+    s.className='spark';
+    const a=Math.random()*Math.PI*2, v=60+Math.random()*160;
+    s.style.setProperty('--dx',Math.cos(a)*v+'px');
+    s.style.setProperty('--dy',Math.sin(a)*v+'px');
+    s.style.left=x+'px';s.style.top=y+'px';
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),1300);
+  }
+}
+
+/* buttons */
+function doWish(x,y){
+  S.wishes++;
+  $('#hudWishes').textContent=String(S.wishes).padStart(2,'0');
+  const px=x??innerWidth*(0.3+Math.random()*.4);
+  const py=y??innerHeight*(0.25+Math.random()*.35);
+  spawnRipple(px,py);
+  toast(['wish logged · look up','another star owes you','keep them coming'][Math.floor(Math.random()*3)]);
+}
+function doRain(){
+  let n=0;
+  const iv=setInterval(()=>{
+    burst(innerWidth*Math.random(),innerHeight*(.15+Math.random()*.5),10);
+    if(++n>=8)clearInterval(iv);
+  },140);
+  toast('star rain · hold onto something');
+  S.excite=1;
+  clearTimeout(S.exciteTimer);
+  S.exciteTimer=setTimeout(()=>S.excite=0,3500);
+}
+function doCalm(){
+  S.paused=true;
+  document.documentElement.classList.add('paused');
+  toast('stillness · the sky holds its breath');
+  setTimeout(()=>{S.paused=false;document.documentElement.classList.remove('paused');},6000);
+}
+$('#wishBtn').onclick=e=>doWish();
+$('#rainBtn').onclick=()=>doRain();
+$('#calmBtn').onclick=()=>doCalm();
+$('#wishBtn2').onclick=()=>doWish();
+$('#rainBtn2').onclick=()=>doRain();
+
+/* fullscreen + pause links */
+$('#fsLink').addEventListener('click',e=>{
+  e.preventDefault();
+  if(document.fullscreenElement)document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(()=>toast('fullscreen blocked by browser'));
+});
+$('#pauseLink').addEventListener('click',e=>{
+  e.preventDefault();
+  S.paused=!S.paused;
+  e.target.textContent=S.paused?'Resume motion':'Pause motion';
+  toast(S.paused?'motion paused':'motion resumed');
+});
+
+/* visibility pause */
+document.addEventListener('visibilitychange',()=>{S.visible=!document.hidden;});
+
+/* ================================================================
+   REVEALS + PROGRESS
+   ================================================================ */
+const io=new IntersectionObserver(es=>{
+  es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
+},{threshold:.18});
+$$('.reveal').forEach(el=>io.observe(el));
+
+const progressFill=$('#progressFill');
+function updateScrollUI(){
+  const doc=document.documentElement;
+  const max=doc.scrollHeight-innerHeight;
+  progressFill.style.height=(max>0?(scrollY/max*100):0)+'%';
+}
+addEventListener('scroll',()=>{
+  S.scrollT=scrollY/Math.max(1,innerHeight);   // viewport units
+  updateScrollUI();
+},{passive:true});
+
+/* ================================================================
+   CLOCK + FPS HUD
+   ================================================================ */
+const hudClock=$('#hudClock'),hudFps=$('#hudFps'),hudStars=$('#hudStars');
+hudStars.textContent='2,048';
+function tickClock(){
+  const d=new Date();
+  hudClock.textContent=[d.getHours(),d.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
+}
+tickClock();setInterval(tickClock,15000);
+
+/* ================================================================
+   MAIN LOOP
+   ================================================================ */
+let frames=0,fpsLast=performance.now(),lastT=performance.now();
+
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min((now-lastT)/1000,.05);lastT=now;
+
+  frames++;
+  if(now-fpsLast>=1000){
+    hudFps.textContent=frames;
+    frames=0;fpsLast=now;
+  }
+
+  if(S.visible&&!S.paused){
+    S.mouse.x=lerp(S.mouse.x,S.mouse.tx,.055);
+    S.mouse.y=lerp(S.mouse.y,S.mouse.ty,.055);
+    S.scroll=lerp(S.scroll,S.scrollT,.08);
+    const finaleNear=document.getElementById('finale');
+    const r=finaleNear.getBoundingClientRect();
+    const prox=Math.max(0,1-Math.abs(r.top+r.height/2-innerHeight/2)/(innerHeight));
+    const energy=S.excite||0;
+
+    if(skyOK){
+      const g=skyGl;
+      g.uniform1f(skyU.uTime,now/1000*timeScale);
+      g.uniform2f(skyU.uMouse,S.mouse.x,S.mouse.y);
+      g.uniform1f(skyU.uScroll,S.scroll);
+      g.uniform1f(skyU.uZoom,prox*.9);
+      g.uniform1f(skyU.uEnergy,energy);
+      g.drawArrays(g.TRIANGLES,0,3);
+    }
+    /* gallery tiles: render only when near the viewport */
+    tiles.forEach(T=>{
+      const rect=T.item.getBoundingClientRect();
+      if(rect.bottom<-80||rect.top>innerHeight+80)return;
+      T.gl.uniform1f(T.U.uTime,now/1000*timeScale);
+      let mx=0,my=0;
+      if(T.hover){
+        /* pointer position relative to tile center, in tile units (-1..1) */
+        mx=((S.mouse.tx*innerWidth)-(rect.left+rect.width/2))/(rect.width/2);
+        my=((innerHeight-S.mouse.ty*innerHeight)-(rect.top+rect.height/2))/(rect.height/2);
+      }
+      T.gl.uniform2f(T.U.uMouse,
+        Math.max(-1,Math.min(1,mx)),
+        Math.max(-1,Math.min(1,my)));
+      T.gl.drawArrays(T.gl.TRIANGLES,0,3);
+    });
+  }
+}
+requestAnimationFrame(frame);
+
+/* intro toast */
+setTimeout(()=>toast('move · click · scroll'),1800);
+setTimeout(()=>{const t=$('#toast');t.classList.remove('show');},6500);
+</script>
+<style id="extra-css">
+/* ripple + spark styles injected late to keep the head tidy */
+.ripple{
+  position:fixed;z-index:58;width:8px;height:8px;border-radius:50%;
+  margin:-4px 0 0 -4px;pointer-events:none;
+  border:1px solid rgba(232,196,119,.9);
+  box-shadow:0 0 24px rgba(232,196,119,.5), inset 0 0 8px rgba(232,196,119,.4);
+  animation:rip 1.3s cubic-bezier(.19,1,.22,1) forwards;
+}
+@keyframes rip{
+  0%{transform:scale(.4);opacity:1}
+  100%{transform:scale(16);opacity:0}}
+.spark{
+  position:fixed;z-index:58;width:4px;height:4px;border-radius:50%;
+  margin:-2px 0 0 -2px;pointer-events:none;
+  background:#ffe9b8;box-shadow:0 0 10px rgba(255,230,170,.9);
+  animation:fly 1.15s cubic-bezier(.15,.85,.35,1) forwards;
+}
+@keyframes fly{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+html.paused .grain{animation-play-state:paused}
+</style>
+</body>
+</html>
