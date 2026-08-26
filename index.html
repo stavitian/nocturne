@@ -374,6 +374,30 @@ section{position:relative;z-index:5;padding:clamp(90px,14vh,170px) clamp(24px,4.
 }
 
 /* ============================================================
+   PIECES — links to the full collection
+   ============================================================ */
+.pieces-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:clamp(16px,2vw,26px);
+}
+@media(max-width:900px){.pieces-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.pieces-grid{grid-template-columns:1fr}}
+.p-item{
+  position:relative;display:flex;flex-direction:column;gap:12px;
+  padding:28px 26px;border-radius:18px;
+  border:1px solid var(--hairline);
+  background:linear-gradient(180deg,var(--ink-3),var(--ink-2));
+  text-decoration:none;color:inherit;
+  transition:transform .6s var(--ease),border-color .6s var(--ease),background .6s var(--ease);
+}
+.p-item:hover{transform:translateY(-5px);border-color:rgba(232,196,119,.42);background:linear-gradient(180deg,var(--ink-4),var(--ink-3))}
+.p-name{font-family:var(--serif);font-style:italic;font-size:26px;color:#f4f6ff;letter-spacing:.01em}
+.p-desc{font-size:12.5px;line-height:1.65;color:var(--mist-2);max-width:36ch}
+.p-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin-top:auto}
+.p-go{position:absolute;top:20px;right:22px;font-family:var(--mono);font-size:16px;color:var(--gold);opacity:.45;transition:opacity .4s,transform .4s var(--ease)}
+.p-item:hover .p-go{opacity:1;transform:translateX(4px)}
+
+/* ============================================================
    FINALE CTA
    ============================================================ */
 .finale{text-align:center;padding-bottom:clamp(70px,10vh,120px)}
@@ -456,6 +480,7 @@ footer .f-moon{width:12px;height:12px;border-radius:50%;background:radial-gradie
   <nav aria-label="Sections">
     <a href="#chapters">Chapters</a>
     <a href="#gallery">Gallery</a>
+    <a href="#pieces">Pieces</a>
     <a href="#finale">Begin</a>
   </nav>
 </header>
@@ -594,6 +619,53 @@ footer .f-moon{width:12px;height:12px;border-radius:50%;background:radial-gradie
       <div class="g-item small-b" style="--ar:4/3" data-preset="violet"><canvas></canvas>
         <div class="g-meta"><span class="g-name">Violet Hour</span><span class="g-tag">DARK NEBULA</span></div>
       </div>
+    </div>
+  </section>
+
+  <!-- ================= PIECES ================= -->
+  <section id="pieces">
+    <div class="section-head reveal">
+      <span class="index section-index">V</span>
+      <h2 class="section-title">The collection</h2>
+      <p class="section-sub">Six single-file pieces. One sky is only the first room.</p>
+    </div>
+    <div class="pieces-grid">
+      <a class="p-item reveal" href="./">
+        <span class="p-go">→</span>
+        <span class="p-name">NOCTURNE</span>
+        <span class="p-desc">A living night sky — two thousand stars, a drifting nebula, shooting stars.</span>
+        <span class="p-tag">The sky</span>
+      </a>
+      <a class="p-item reveal d1" href="sanctum.html">
+        <span class="p-go">→</span>
+        <span class="p-name">SANCTVM</span>
+        <span class="p-desc">Seven transmuting fractal geometries with a generative score.</span>
+        <span class="p-tag">Fractals</span>
+      </a>
+      <a class="p-item reveal d2" href="singvlaris.html">
+        <span class="p-go">→</span>
+        <span class="p-name">SINGVLARIS</span>
+        <span class="p-desc">A black hole with real gravitational lensing — geodesics per pixel.</span>
+        <span class="p-tag">Lensing</span>
+      </a>
+      <a class="p-item reveal" href="arenae.html">
+        <span class="p-go">→</span>
+        <span class="p-name">ARENAE</span>
+        <span class="p-desc">Living sand — a granular automaton in a brass frame.</span>
+        <span class="p-tag">Automata</span>
+      </a>
+      <a class="p-item reveal d1" href="sloptvm.html">
+        <span class="p-go">→</span>
+        <span class="p-name">SLOPTVM</span>
+        <span class="p-desc">Three fractal forms; red, enlarged selector.</span>
+        <span class="p-tag">Fractals</span>
+      </a>
+      <a class="p-item reveal d2" href="sloptvm2.html">
+        <span class="p-go">→</span>
+        <span class="p-name">SLOPTVM II</span>
+        <span class="p-desc">Pyramid plus three forms, with an Oxygène-style analog score.</span>
+        <span class="p-tag">Fractals</span>
+      </a>
     </div>
   </section>
 
