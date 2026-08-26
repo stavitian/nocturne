@@ -614,6 +614,7 @@ footer .f-moon{width:12px;height:12px;border-radius:50%;background:radial-gradie
 <footer>
   <div class="f-brand"><span class="f-moon" aria-hidden="true"></span><span>NOCTURNE · MMXXVI</span></div>
   <div class="f-links">
+    <a href="#" id="sndLink">Sound on</a>
     <a href="#" id="fsLink">Fullscreen</a>
     <a href="#" id="pauseLink">Pause motion</a>
   </div>
@@ -1133,6 +1134,130 @@ function frame(now){
   }
 }
 requestAnimationFrame(frame);
+
+/* ================================================================
+   GENERATIVE NIGHT SCORE (WebAudio, zero payload)
+   ================================================================ */
+let AC=null, master=null, sndOn=true, musicLive=false;
+function audioInit(){
+  if(AC) return true;
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return false;
+    AC = new Ctx();
+    master = AC.createGain();
+    master.gain.value = 0;
+    master.connect(AC.destination);
+    /* space: feedback delay */
+    const dl = AC.createDelay(1.0); dl.delayTime.value = 0.52;
+    const fb = AC.createGain(); fb.gain.value = 0.42;
+    const dlp = AC.createBiquadFilter(); dlp.type='lowpass'; dlp.frequency.value = 2000;
+    dl.connect(fb); fb.connect(dlp); dlp.connect(dl);
+    const wet = AC.createGain(); wet.gain.value = 0.38;
+    dl.connect(wet); wet.connect(master);
+    AC._bus = { fx: dl };
+    /* warm low pad: root + fifth, breathing */
+    const dGain = AC.createGain(); dGain.gain.value = 0.045;
+    const dFlt = AC.createBiquadFilter(); dFlt.type='lowpass'; dFlt.frequency.value = 300; dFlt.Q.value = 0.7;
+    const o1 = AC.createOscillator(); o1.type='triangle'; o1.frequency.value = 65.41;   /* C2 */
+    const o2 = AC.createOscillator(); o2.type='sine';     o2.frequency.value = 98.12;   /* G2 */
+    const og2 = AC.createGain(); og2.gain.value = 0.32;
+    o1.connect(dFlt); o2.connect(og2); og2.connect(dFlt);
+    dFlt.connect(dGain); dGain.connect(master); dGain.connect(dl);
+    const lfo = AC.createOscillator(); lfo.frequency.value = 0.06;
+    const lfoG = AC.createGain(); lfoG.gain.value = 90;
+    lfo.connect(lfoG); lfoG.connect(dFlt.frequency);
+    o1.start(); o2.start(); lfo.start();
+    /* night air: slow filtered noise */
+    const nb = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate);
+    const nd = nb.getChannelData(0);
+    for(let i=0;i<nd.length;i++) nd[i] = Math.random()*2-1;
+    const ns = AC.createBufferSource(); ns.buffer = nb; ns.loop = true;
+    const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 820; bp.Q.value = 9;
+    const ng = AC.createGain(); ng.gain.value = 0.011;
+    ns.connect(bp); bp.connect(ng); ng.connect(master);
+    const nlfo = AC.createOscillator(); nlfo.frequency.value = 0.024;
+    const nlfoG = AC.createGain(); nlfoG.gain.value = 320;
+    nlfo.connect(nlfoG); nlfoG.connect(bp.frequency);
+    ns.start(); nlfo.start();
+    return true;
+  }catch(err){ AC=null; return false; }
+}
+function ramp(to,dur){
+  if(!master) return;
+  const from = master.gain.value, t0 = performance.now();
+  clearInterval(master._ramp);
+  master._ramp = setInterval(()=>{
+    const k = Math.min(1,(performance.now()-t0)/dur);
+    master.gain.value = from+(to-from)*k;
+    if(k>=1) clearInterval(master._ramp);
+  },60);
+}
+function bell(freq,vol){
+  if(!AC || AC.state!=='running') return;
+  try{
+    const o=AC.createOscillator(); o.type='sine'; o.frequency.value=freq;
+    const g=AC.createGain();
+    const t0=AC.currentTime;
+    g.gain.setValueAtTime(0,t0);
+    g.gain.linearRampToValueAtTime(vol,t0+0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+6);
+    let out=g;
+    if(AC.createStereoPanner){
+      const pn=AC.createStereoPanner(); pn.pan.value=Math.random()*1.3-0.65;
+      g.connect(pn); out=pn;
+    }
+    o.connect(g); out.connect(master); out.connect(AC._bus.fx);
+    o.start(t0); o.stop(t0+6.2);
+  }catch(err){}
+}
+setInterval(()=>{
+  if(!musicLive || !AC || AC.state!=='running') return;
+  if(Math.random()<0.14){
+    const ratios=[1,1.125,1.25,1.5,1.6875,2];   /* C major pentatonic-ish */
+    bell(261.63*2*ratios[(Math.random()*ratios.length)|0], 0.02+Math.random()*0.02);
+  }
+},1600);
+function audioStart(){
+  if(!audioInit()) return;
+  const live=()=>{ musicLive=true; };
+  if(AC.state==='suspended'){ AC.resume().then(live).catch(()=>{}); }
+  if(AC.state==='running') live();
+  ramp(0.45,2000);
+}
+function audioStop(){
+  ramp(0,900);
+  musicLive=false;
+  setTimeout(()=>{ try{ if(AC && !sndOn) AC.suspend(); }catch(err){} },1000);
+}
+function toggleSound(){
+  try{
+    sndOn=!sndOn;
+    if(sndOn) audioStart(); else audioStop();
+    const a=document.getElementById('sndLink');
+    if(a) a.textContent = sndOn ? 'Sound on' : 'Sound off';
+  }catch(err){}
+}
+/* autoplay policy recovery: any input counts as the required gesture */
+function gestureRetry(){
+  if(!sndOn || musicLive) return;
+  if(AC && AC.state==='running'){ musicLive=true; return; }
+  audioStart();
+}
+addEventListener('pointerdown', gestureRetry);
+addEventListener('pointermove', gestureRetry, {passive:true});
+addEventListener('keydown', gestureRetry);
+addEventListener('wheel', gestureRetry, {passive:true});
+document.addEventListener('visibilitychange', ()=>{
+  try{
+    if(!AC) return;
+    if(document.hidden) AC.suspend();
+    else if(sndOn) AC.resume().then(()=>{ musicLive=true; }).catch(()=>{});
+  }catch(err){}
+});
+$('#sndLink').addEventListener('click', e=>{ e.preventDefault(); toggleSound(); });
+
+audioStart();   /* attempts live start; autoplay policy defers to first gesture */
 
 /* intro toast */
 setTimeout(()=>toast('move · click · scroll'),1800);

@@ -765,6 +765,7 @@ function gestureRetry(){
   if(sndOn && !musicLive) audioStart();
 }
 addEventListener('pointerdown', gestureRetry);
+addEventListener('pointermove', gestureRetry, {passive:true});
 addEventListener('keydown', gestureRetry);
 addEventListener('wheel', gestureRetry, {passive:true});
 document.addEventListener('visibilitychange', () => {
