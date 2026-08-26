@@ -4,7 +4,16 @@
 
 ![preview](preview.png)
 
-## See it live
+## The pieces
+
+| Piece | What it is | Open |
+|---|---|---|
+| **NOCTURNE** (`index.html`) | A living night sky — procedural nebula, 2,000 stars, meteors | [live](https://stavitian.github.io/nocturne/) |
+| **SANCTVM** (`sanctum.html`) | A cathedral of pure mathematics — six ray-marched fractal forms that transmute into each other, with a generative ambient score | [live](https://stavitian.github.io/nocturne/sanctum.html) |
+
+Both are single files. Both run anywhere. Zero images, zero libraries.
+
+## NOCTURNE — see it live
 
 > **https://stavitian.github.io/nocturne/**
 
