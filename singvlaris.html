@@ -41,7 +41,6 @@
   }
 
   @keyframes fadein{ from{ opacity:0; } to{ opacity:1; } }
-  @keyframes risein{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
   .ui{ transition:opacity .8s ease; }
   body.zen .ui{ opacity:0 !important; pointer-events:none !important; }
 
@@ -80,34 +79,6 @@
     font-style:normal; font-family:inherit; font-size:10px; letter-spacing:.3em;
     color:rgba(233,195,124,.34); margin-top:18px;
   }
-
-  #hero{
-    position:fixed; left:50%; bottom:clamp(56px,11vh,110px); z-index:5;
-    text-align:center; pointer-events:none; width:min(92vw,780px);
-    transform:translateX(-50%);
-    animation:risein 1.9s cubic-bezier(.2,.7,.2,1) .7s backwards;
-  }
-  #hero h1{
-    margin:0; font-family:Georgia,"Times New Roman",serif; font-weight:400;
-    font-size:clamp(44px,9vw,106px); letter-spacing:.14em; line-height:1;
-    color:var(--ink);
-    text-shadow:0 0 34px rgba(233,195,124,.26), 0 2px 26px rgba(0,0,0,.9);
-  }
-  #hero h1 span{ color:var(--gold); }
-  #sub{
-    margin-top:14px; font-size:clamp(10.5px,1.4vw,13px); font-weight:300;
-    letter-spacing:.34em; text-transform:uppercase; color:rgba(245,234,214,.55);
-  }
-  #hint{
-    margin-top:22px; display:inline-flex; gap:8px; align-items:center;
-    font-family:ui-monospace,Menlo,Consolas,monospace; font-size:9.5px;
-    letter-spacing:.22em; color:rgba(233,195,124,.66);
-    border:1px solid rgba(233,195,124,.22); border-radius:999px;
-    padding:8px 18px; background:rgba(0,0,0,.4); backdrop-filter:blur(6px);
-    transition:opacity 1.2s ease;
-  }
-  #hint.gone{ opacity:0; }
-  #hint b{ color:var(--gold-hi); font-weight:400; }
 
   #stats{
     position:fixed; left:clamp(18px,3.4vw,40px); bottom:clamp(46px,8vh,72px); z-index:5;
@@ -151,11 +122,10 @@
 
   @media (max-width:760px){
     #quote, #stats{ display:none; }
-    #hero{ bottom:calc(64px + 8vh); }
   }
   @media (prefers-reduced-motion: reduce){
     #grain{ animation:none; }
-    #hero,#hd,#quote,#stats,#ft{ animation-duration:.001s; }
+    #hd,#quote,#stats,#ft{ animation-duration:.001s; }
   }
 </style>
 </head>
@@ -174,12 +144,6 @@
   <em>STEPHEN HAWKING</em>
 </div>
 
-<div id="hero" class="ui">
-  <h1>SINGV<span>LARIS</span></h1>
-  <div id="sub">light that cannot leave · rendered as it bends</div>
-  <div id="hint"><b>drag</b> orbit&nbsp;&nbsp;·&nbsp;&nbsp;<b>scroll</b> approach&nbsp;&nbsp;·&nbsp;&nbsp;<b>double-click</b> feed the disk</div>
-</div>
-
 <div id="stats" class="ui">
   FPS&nbsp;&nbsp;<b id="sFps">—</b><br>
   R&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b id="sDist">6.00 rₛ</b><br>
@@ -188,11 +152,10 @@
 </div>
 
 <footer id="ft" class="ui">
-  <span class="keys">space zen · m music · b feed · f fullscreen · arrows orbit</span>
+  <span>ZERO IMAGES · ZERO LIBRARIES · GENERATIVE SCORE</span>
   <span class="right">
     <button id="snd" class="on">◆ sound on</button>
     <button id="fs">⛶ fullscreen</button>
-    <span>ZERO IMAGES · ZERO LIBRARIES</span>
   </span>
 </footer>
 
@@ -629,7 +592,6 @@ let pinchD = 0;
 function markInput(){
   S.lastInput = performance.now();
   S.touched = true;
-  $('hint').classList.add('gone');
 }
 function feedCycle(){
   const now = performance.now();
@@ -787,13 +749,6 @@ function frame(now){
 
   const breathe = 1 + 0.010*Math.sin(it*0.5) + S.pulse*0.03*Math.sin(it*8.0);
 
-  /* hero parallax */
-  if(!S.zen){
-    const hx = clamp(-S.vyaw*260, -14, 14);
-    const hy = clamp(S.vpitch*180, -8, 8);
-    $('hero').style.transform = 'translateX(-50%) translate('+hx.toFixed(1)+'px,'+hy.toFixed(1)+'px)';
-  }
-
   if(gl && U.uRes){
     gl.uniform2f(U.uRes, cv.width, cv.height);
     gl.uniform1f(U.uTime, it*timeScale);
@@ -832,7 +787,6 @@ requestAnimationFrame(() => { requestAnimationFrame(() => {
   }
   requestAnimationFrame(frame);
 }); });
-setTimeout(() => { $('hint').classList.add('gone'); }, 13000);
 })();
 </script>
 </body>
