@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>SINGVLARIS — one-way light</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23e9c37c' stroke-width='1.6'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#f5ead6;
+    --gold:#e9c37c;
+    --gold-hi:#fdf6e3;
+    --dim:rgba(245,234,214,.42);
+  }
+  *{ box-sizing:border-box; }
+  ::selection{ background:rgba(233,195,124,.35); color:#fff8e8; }
+  html,body{ height:100%; }
+  body{
+    margin:0; overflow:hidden; background:#000; color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #gl{
+    position:fixed; inset:0; width:100vw; height:100dvh; display:block;
+    cursor:grab; touch-action:none;
+  }
+  #gl.grabbing{ cursor:grabbing; }
+  #vig{
+    position:fixed; inset:0; pointer-events:none; z-index:2;
+    background:
+      radial-gradient(ellipse 130% 100% at 50% 46%, rgba(0,0,0,0) 50%, rgba(0,0,0,.6) 100%);
+  }
+  #grain{
+    position:fixed; inset:-120px; z-index:3; pointer-events:none;
+    opacity:.42; mix-blend-mode:overlay;
+    animation:gr .95s steps(3) infinite;
+  }
+  @keyframes gr{
+    0%{ transform:translate(0,0);} 33%{ transform:translate(-46px,28px);} 66%{ transform:translate(-88px,-20px);} 100%{ transform:translate(0,0);}
+  }
+
+  @keyframes fadein{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes risein{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
+  .ui{ transition:opacity .8s ease; }
+  body.zen .ui{ opacity:0 !important; pointer-events:none !important; }
+
+  #hd{
+    position:fixed; top:0; left:0; right:0; z-index:5;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:clamp(16px,3vw,34px) clamp(18px,3.4vw,40px);
+    pointer-events:none;
+    animation:fadein 1.6s ease .15s backwards;
+  }
+  #brand{
+    font-size:12px; font-weight:300; letter-spacing:.52em; color:rgba(245,234,214,.82);
+    text-shadow:0 0 18px rgba(233,195,124,.25);
+  }
+  #brand::after{
+    content:""; display:block; width:46px; height:1px; margin-top:9px;
+    background:linear-gradient(90deg, var(--gold), rgba(233,195,124,0));
+  }
+  #mode{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:10px; letter-spacing:.28em; color:var(--dim); text-align:right; padding-top:3px;
+  }
+  #mode b{ color:rgba(233,195,124,.9); font-weight:400; }
+
+  #quote{
+    position:fixed; left:clamp(10px,3vw,34px); top:50%; transform:translateY(-50%);
+    z-index:5; pointer-events:none;
+    writing-mode:vertical-rl;
+    font-family:Georgia,"Times New Roman",serif; font-style:italic;
+    font-size:12.5px; line-height:1.9; letter-spacing:.08em;
+    color:rgba(233,195,124,.74); max-height:64vh;
+    text-shadow:0 0 10px rgba(0,0,0,.85), 0 1px 2px rgba(0,0,0,.95);
+    animation:fadein 1.8s ease 1.1s backwards;
+  }
+  #quote em{
+    font-style:normal; font-family:inherit; font-size:10px; letter-spacing:.3em;
+    color:rgba(233,195,124,.34); margin-top:18px;
+  }
+
+  #hero{
+    position:fixed; left:50%; bottom:clamp(56px,11vh,110px); z-index:5;
+    text-align:center; pointer-events:none; width:min(92vw,780px);
+    transform:translateX(-50%);
+    animation:risein 1.9s cubic-bezier(.2,.7,.2,1) .7s backwards;
+  }
+  #hero h1{
+    margin:0; font-family:Georgia,"Times New Roman",serif; font-weight:400;
+    font-size:clamp(44px,9vw,106px); letter-spacing:.14em; line-height:1;
+    color:var(--ink);
+    text-shadow:0 0 34px rgba(233,195,124,.26), 0 2px 26px rgba(0,0,0,.9);
+  }
+  #hero h1 span{ color:var(--gold); }
+  #sub{
+    margin-top:14px; font-size:clamp(10.5px,1.4vw,13px); font-weight:300;
+    letter-spacing:.34em; text-transform:uppercase; color:rgba(245,234,214,.55);
+  }
+  #hint{
+    margin-top:22px; display:inline-flex; gap:8px; align-items:center;
+    font-family:ui-monospace,Menlo,Consolas,monospace; font-size:9.5px;
+    letter-spacing:.22em; color:rgba(233,195,124,.66);
+    border:1px solid rgba(233,195,124,.22); border-radius:999px;
+    padding:8px 18px; background:rgba(0,0,0,.4); backdrop-filter:blur(6px);
+    transition:opacity 1.2s ease;
+  }
+  #hint.gone{ opacity:0; }
+  #hint b{ color:var(--gold-hi); font-weight:400; }
+
+  #stats{
+    position:fixed; left:clamp(18px,3.4vw,40px); bottom:clamp(46px,8vh,72px); z-index:5;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:10px; letter-spacing:.2em; line-height:2.05; color:var(--dim);
+    pointer-events:none; text-shadow:0 1px 6px rgba(0,0,0,.95);
+    animation:fadein 1.8s ease 1.9s backwards;
+  }
+  #stats b{ color:rgba(233,195,124,.9); font-weight:400; }
+
+  #ft{
+    position:fixed; left:0; right:0; bottom:0; z-index:6;
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+    padding:14px clamp(18px,3.4vw,40px);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:9px; letter-spacing:.22em; color:rgba(245,234,214,.34);
+    animation:fadein 1.8s ease 2.1s backwards;
+  }
+  #ft .keys::before{ content:"◆ "; color:rgba(233,195,124,.5); }
+  #ft a, #ft button{
+    font:inherit; letter-spacing:inherit; color:rgba(233,195,124,.75);
+    background:none; border:none; cursor:pointer; padding:4px 2px;
+    text-decoration:none; transition:color .3s;
+  }
+  #ft a:hover, #ft button:hover{ color:var(--gold-hi); }
+  #snd.on{ color:var(--gold-hi); }
+  #ft .right{ display:flex; gap:22px; align-items:center; }
+
+  #status{
+    position:fixed; left:10px; top:64px; z-index:50;
+    font:10px ui-monospace,Menlo,Consolas,monospace; letter-spacing:.08em;
+    color:rgba(233,195,124,.85); text-shadow:0 1px 6px rgba(0,0,0,.95);
+    pointer-events:none; max-width:70vw;
+  }
+  #nogl{
+    position:fixed; inset:auto 0 34vh 0; z-index:4; text-align:center;
+    font-family:Georgia,serif; font-style:italic; font-size:17px;
+    color:rgba(245,234,214,.6); display:none; pointer-events:none;
+  }
+  body.nogl #nogl{ display:block; animation:fadein 2s ease; }
+
+  @media (max-width:760px){
+    #quote, #stats{ display:none; }
+    #hero{ bottom:calc(64px + 8vh); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    #grain{ animation:none; }
+    #hero,#hd,#quote,#stats,#ft{ animation-duration:.001s; }
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="vig"></div>
+<div id="grain"></div>
+
+<header id="hd" class="ui">
+  <div id="brand">SINGVLARIS</div>
+  <div id="mode">SCHWARZSCHILD r<sub>s</sub> = 1<br>GEODESICS · REAL TIME</div>
+</header>
+
+<div id="quote" class="ui">
+  “Black holes ain’t as black as they are painted.”
+  <em>STEPHEN HAWKING</em>
+</div>
+
+<div id="hero" class="ui">
+  <h1>SINGV<span>LARIS</span></h1>
+  <div id="sub">light that cannot leave · rendered as it bends</div>
+  <div id="hint"><b>drag</b> orbit&nbsp;&nbsp;·&nbsp;&nbsp;<b>scroll</b> approach&nbsp;&nbsp;·&nbsp;&nbsp;<b>double-click</b> feed the disk</div>
+</div>
+
+<div id="stats" class="ui">
+  FPS&nbsp;&nbsp;<b id="sFps">—</b><br>
+  R&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b id="sDist">6.00 rₛ</b><br>
+  INCL&nbsp;<b id="sEl">10°</b><br>
+  AZ&nbsp;&nbsp;&nbsp;<b id="sAz">0°</b>
+</div>
+
+<footer id="ft" class="ui">
+  <span class="keys">space zen · m music · b feed · f fullscreen · arrows orbit</span>
+  <span class="right">
+    <button id="snd" class="on">◆ sound on</button>
+    <button id="fs">⛶ fullscreen</button>
+    <span>ZERO IMAGES · ZERO LIBRARIES</span>
+  </span>
+</footer>
+
+<div id="status"></div>
+<div id="nogl">WebGL is unavailable — the horizon stays silent.<br><span style="font-size:11px;font-family:ui-monospace,monospace;letter-spacing:.2em">TRY ENABLING HARDWARE ACCELERATION</span></div>
+<audio id="music" loop></audio>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('gl');
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp = (a,b,k) => a+(b-a)*k;
+const easeIO = k => k<.5 ? 4*k*k*k : 1-Math.pow(-2*k+2,3)/2;
+const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 700;
+const LITE = /lite=1/.test(location.search) || /[#&]lite/.test(location.hash);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ================= state ================= */
+const S = {
+  yaw:0.0, pitch:0.18, dist:6.0,
+  vyaw:0, vpitch:0,
+  pulse:0, flash:0, fov:1.65,
+  feed:0,
+  zen:false, touched:RM,
+  lastInput:performance.now(), started:performance.now(),
+  frames:0, lastBloom:0,
+};
+let scale = LITE ? 0.42 : (MOBILE ? 0.60 : 0.36);
+const MAXPX = LITE ? 650000 : (MOBILE ? 900000 : 2200000);
+let warmK = 0.34, lastWarm = 0, stalls = 0, dts = 0.05;
+let DPR = 1, W = 0, H = 0;
+let fps = 60;
+const fpsE = [];
+const timeScale = RM ? 0.4 : 1;
+
+function setStatus(msg){ try{ $('status').textContent = msg; }catch(err){} }
+window.addEventListener('error', e => { try{ setStatus('JS ERROR: '+(e.message||'?')); }catch(err){} });
+
+/* ================= film grain ================= */
+(function grain(){
+  try{
+    const g = document.createElement('canvas'); g.width = g.height = 140;
+    const gc = g.getContext('2d');
+    const im = gc.createImageData(140,140), d = im.data;
+    for(let i=0;i<d.length;i+=4){
+      const v = (Math.random()*255)|0;
+      d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=26;
+    }
+    gc.putImageData(im,0,0);
+    $('grain').style.backgroundImage = 'url('+g.toDataURL('image/png')+')';
+  }catch(err){}
+})();
+
+/* ================= shaders ================= */
+const VS = `
+attribute vec2 p;
+varying vec2 vUv;
+void main(){ vUv = p*0.5+0.5; gl_Position = vec4(p,0.,1.); }
+`;
+
+const STEPS = LITE ? 90 : (MOBILE ? 110 : 150);
+
+const FS = `
+precision highp float;
+uniform vec2  uRes;
+uniform float uTime, uYaw, uPitch, uDist, uFov, uFeed;
+varying vec2 vUv;
+
+float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
+float hash3(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453123); }
+float noise(vec2 p){
+  vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),
+             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x), f.y);
+}
+float fbm(vec2 p){
+  float v=0., a=.5;
+  mat2 rot=mat2(.8,.6,-.6,.8);
+  for(int i=0;i<5;i++){ v+=a*noise(p); p=rot*p*2.03+7.31; a*=.55; }
+  return v;
+}
+
+/* ---- background universe, sampled by the FINAL bent ray ---- */
+vec3 universe(vec3 rd){
+  vec3 col = vec3(0.0015,0.0015,0.003);
+  /* faint galactic band, tilted so it slices the frame diagonally */
+  float band = exp(-abs(dot(rd, normalize(vec3(0.2,0.88,-0.32))))*4.5);
+  float bn = fbm(vec2(atan(rd.z,rd.x)*2.4, rd.y*3.0)+3.1);
+  col += vec3(0.028,0.025,0.042)*band*(0.35+bn*0.8);
+  col += vec3(0.055,0.042,0.026)*band*bn*bn*0.5;
+
+  /* two star fields — these are what the lens smears into rings */
+  vec2 sc = vec2(atan(rd.z,rd.x), asin(clamp(rd.y,-1.,1.)));
+  for(int L=0;L<2;L++){
+    float scl = (L==0)?30.0:64.0;
+    float thr = (L==0)?0.947:0.973;
+    vec2 g = sc*scl;
+    vec2 id = floor(g); vec2 f = fract(g)-0.5;
+    float h1 = hash(id+float(L)*17.31);
+    if(h1>thr){
+      vec2 o = vec2(hash(id+7.13),hash(id+3.71))-0.5;
+      float d = length(f-o*0.82);
+      float tw = 0.55+0.45*sin(uTime*(1.0+h1*2.2)+h1*41.0);
+      float amp = (L==0)?(0.34+h1):(0.20+h1*0.5);
+      vec3 tint = mix(vec3(1.0,0.93,0.82), vec3(0.78,0.86,1.0), hash(id+5.5));
+      col += tint * smoothstep(0.062,0.,d) * tw * amp;
+    }
+  }
+  return col;
+}
+
+/* ---- accretion disk emission at a plane-crossing point ---- */
+vec3 disk(vec3 hp, vec3 rdN){
+  float rr = length(hp.xz);
+  float inner = 1.62, outer = 4.9;
+  float body = smoothstep(inner, inner+0.42, rr) * smoothstep(outer, outer-1.7, rr);
+  if(body <= 0.001) return vec3(0.0);
+
+  float ang = atan(hp.z, hp.x);
+  /* keplerian differential rotation: inner rings lap the outer ones */
+  float w = 1.15*pow(max(rr,1.2), -1.5);
+  float a2 = ang + uTime*w*1.9;
+  float n = fbm(vec2(rr*2.6, a2*2.2))
+          * 0.68 + fbm(vec2(rr*6.5, a2*5.5)) * 0.32;
+  n += uFeed*0.24*fbm(vec2(rr*9.0 - uTime*2.4, a2*8.0));
+  float dens = smoothstep(0.18, 0.78, n) * body;
+
+  /* radial temperature ramp: white-gold -> amber -> deep ember */
+  float tK = clamp((rr-inner)/(outer-inner), 0., 1.);
+  vec3 cHot = vec3(1.00,0.94,0.80);
+  vec3 cMid = vec3(1.00,0.70,0.34);
+  vec3 cOut = vec3(0.52,0.24,0.115);
+  vec3 emit = mix(cHot, cMid, smoothstep(0.02,0.42,tK));
+  emit = mix(emit, cOut, smoothstep(0.38,1.0,tK));
+
+  /* special-relativistic doppler beaming + shift */
+  vec3 vdir  = normalize(vec3(-hp.z, 0.0, hp.x));
+  float beta = min(0.60, 0.5*sqrt(1.55/max(rr,1.3)));
+  float gam  = inversesqrt(1.0-beta*beta);
+  float cosT = dot(vdir, -rdN);
+  float dopp = 1.0/(gam*(1.0-beta*cosT));
+  float beam = dopp*dopp*dopp;
+  emit = mix(emit, emit.zyx*vec3(0.9,1.05,1.35),
+             clamp((1.0-dopp)*0.9, 0.0, 0.6));
+  emit = mix(emit, vec3(0.92,0.96,1.0)*(emit.r*1.4),
+             clamp((dopp-1.0)*0.75, 0.0, 0.65));
+
+  /* gravitational redshift near the inner edge */
+  float grav = clamp(sqrt(max(1.0 - 1.0/rr, 0.0)), 0.0, 1.0);
+  return emit * dens * beam * (0.35+0.65*grav*grav) * 1.55;
+}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy*2.0-uRes)/uRes.y;
+  float cy=cos(uPitch), sy=sin(uPitch), cz=cos(uYaw), sz=sin(uYaw);
+  vec3 fwd = normalize(vec3(-cz*cy, sy, -sz*cy));
+  vec3 rgt = normalize(cross(vec3(0.,1.,0.), fwd));
+  vec3 up  = cross(fwd,rgt);
+  vec3 ro  = -fwd*uDist;
+  vec3 rd  = normalize(rgt*uv.x + up*uv.y + fwd*uFov);
+
+  /* conserved angular momentum of the null geodesic */
+  vec3 hv = cross(ro, rd);
+  float h2 = dot(hv,hv);
+
+  vec3 col = vec3(0.0);
+  float transmit = 1.0;
+  float glow = 0.0;
+  bool captured = false;
+  float rExit = 999.0;   /* radius where the ray ended: captured rays stay black */
+
+  vec3 p = ro;
+  vec3 v = rd;
+  for(int i=0;i<${STEPS};i++){
+    float r2 = dot(p,p);
+    float r  = sqrt(r2);
+
+    /* event horizon */
+    if(r < 1.0){ captured = true; rExit = 0.0; break; }
+    /* escaped to the far field */
+    if(r2 > 900.0 && dot(p,v) > 0.0){ rExit = sqrt(r2); break; }
+
+    /* adaptive step: fine near the hole, coarse far away */
+    float dt = clamp(r*0.16, 0.045, 0.40);
+
+    /* photon-ring glow: peaks AT the photon sphere r=1.5, dies fast inside,
+       so captured rays leave a truly black shadow with a thin brilliant rim */
+    glow += dt * exp(-abs(r-1.5)*4.2) * 0.11;
+
+    vec3 a = -1.5 * h2 * p / (r2*r2*sqrt(r2));
+
+    float py = p.y;
+    vec3 pn = p + v*dt;
+    vec3 vn = v + a*dt;
+
+    /* did this step cross the equatorial disk plane? */
+    if(py * pn.y < 0.0){
+      float f  = py / (py - pn.y);
+      vec3  hp = mix(p, pn, f);
+      vec3  dc = disk(hp, normalize(mix(v, vn, f)));
+      float lum = max(max(dc.r,dc.g),dc.b);
+      transmit *= exp(-lum*0.85);
+      col += dc * transmit * 1.45;
+    }
+
+    p = pn;
+    v = vn;
+  }
+
+  /* background stars, bent by everything above */
+  if(!captured){
+    col += universe(normalize(v)) * transmit;
+  }
+
+  /* photon ring + horizon shadow dressing */
+  col += vec3(1.0,0.84,0.58) * glow * (0.45+uFeed*0.7) * step(1.0, rExit);
+
+  /* grade: exposure, ACES-ish tonemap, gamma, vignette, fringe, dither */
+  col *= 1.18;
+  col = (col*(2.51*col+0.03))/(col*(2.43*col+0.59)+0.14);
+  col = pow(clamp(col,0.,1.), vec3(0.4545));
+  float vig = pow(16.0*vUv.x*vUv.y*(1.0-vUv.x)*(1.0-vUv.y), 0.24);
+  col *= mix(0.5,1.0,vig);
+  float cf = distance(vUv, vec2(0.5));
+  col *= mix(vec3(1.0), vec3(0.968,0.978,1.07), smoothstep(0.44,0.8,cf));
+  col += (hash(gl_FragCoord.xy + fract(uTime))-0.5)*(1.6/255.0);
+
+  gl_FragColor = vec4(col,1.0);
+}
+`;
+
+/* ================= gl boot ================= */
+let gl = null, P = null, U = {}, failMsg = '';
+function compile(type, src){
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)){
+    throw new Error('shader: '+gl.getShaderInfoLog(sh));
+  }
+  return sh;
+}
+function gpuIsSoftware(){
+  try{
+    const t = document.createElement('canvas');
+    const g = t.getContext('webgl') || t.getContext('experimental-webgl');
+    const dbg = g && g.getExtension('WEBGL_debug_renderer_info');
+    const rn = dbg ? String(g.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : (navigator.userAgent||'');
+    return /swiftshader|software|llvmpipe|basic.?render/i.test(rn);
+  }catch(err){ return false; }
+}
+function bootGL(){
+  try{
+    const SOFT = gpuIsSoftware();
+    gl = cv.getContext('webgl', {antialias:false, depth:false, stencil:false,
+      alpha:false, preserveDrawingBuffer:SOFT,
+      powerPreference: SOFT ? 'low-power' : 'high-performance'})
+     || cv.getContext('experimental-webgl', {antialias:false, preserveDrawingBuffer:SOFT});
+    if(!gl) throw new Error('no webgl context');
+    try{
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      const rn = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+      if(/swiftshader|software|llvmpipe/i.test(rn)){ scale = Math.min(scale, 0.36); }
+    }catch(err){}
+    cv.addEventListener('webglcontextlost', e => {
+      e.preventDefault();
+      failMsg = 'context lost — recovering';
+      document.body.classList.add('nogl');
+    });
+    cv.addEventListener('webglcontextrestored', () => {
+      failMsg = '';
+      document.body.classList.remove('nogl');
+      try{ bootGL(); fit(); }catch(err){}
+    });
+    const vs = compile(gl.VERTEX_SHADER, VS);
+    const fs = compile(gl.FRAGMENT_SHADER, FS);
+    const pr = gl.createProgram();
+    gl.attachShader(pr,vs); gl.attachShader(pr,fs);
+    gl.bindAttribLocation(pr, 0, 'p');
+    gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr, gl.LINK_STATUS)){
+      throw new Error('link: '+gl.getProgramInfoLog(pr));
+    }
+    gl.useProgram(pr);
+    P = pr;
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    ['uRes','uTime','uYaw','uPitch','uDist','uFov','uFeed']
+      .forEach(n => { U[n] = gl.getUniformLocation(pr, n); });
+  }catch(err){
+    failMsg = String(err.message||err);
+    gl = null;
+    document.body.classList.add('nogl');
+  }
+}
+function fit(){
+  DPR = Math.min(devicePixelRatio||1, 1.75);
+  W = innerWidth; H = innerHeight;
+  let w = Math.max(2, Math.round(W*DPR*scale));
+  let h = Math.max(2, Math.round(H*DPR*scale));
+  const px = w*h;
+  if(px > MAXPX){
+    const k = Math.sqrt(MAXPX/px);
+    w = Math.max(2, Math.round(w*k));
+    h = Math.max(2, Math.round(h*k));
+  }
+  cv.width  = w;
+  cv.height = h;
+  cv.style.width = W+'px';
+  cv.style.height = H+'px';
+  if(gl) gl.viewport(0, 0, cv.width, cv.height);
+}
+addEventListener('resize', fit);
+
+/* ================= procedural score (WebAudio, zero payload) ================= */
+let AC = null, master = null, sndOn = true, musicLive = false;
+function audioInit(){
+  if(AC) return true;
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return false;
+    AC = new Ctx();
+    master = AC.createGain();
+    master.gain.value = 0;
+    master.connect(AC.destination);
+    const dl = AC.createDelay(1.0); dl.delayTime.value = 0.46;
+    const fb = AC.createGain(); fb.gain.value = 0.38;
+    const dlp = AC.createBiquadFilter(); dlp.type='lowpass'; dlp.frequency.value = 1600;
+    dl.connect(fb); fb.connect(dlp); dlp.connect(dl);
+    const wet = AC.createGain(); wet.gain.value = 0.4;
+    dl.connect(wet); wet.connect(master);
+    AC._bus = { fx: dl };
+    /* abyssal drone: 41 Hz + fifth, breathing lowpass */
+    const dGain = AC.createGain(); dGain.gain.value = 0.07;
+    const dFlt = AC.createBiquadFilter(); dFlt.type='lowpass'; dFlt.frequency.value = 190; dFlt.Q.value = 0.9;
+    const o1 = AC.createOscillator(); o1.type='triangle'; o1.frequency.value = 41.2;
+    const o2 = AC.createOscillator(); o2.type='sine';     o2.frequency.value = 61.9;
+    const og2 = AC.createGain(); og2.gain.value = 0.3;
+    o1.connect(dFlt); o2.connect(og2); og2.connect(dFlt);
+    dFlt.connect(dGain); dGain.connect(master); dGain.connect(dl);
+    const lfo = AC.createOscillator(); lfo.frequency.value = 0.05;
+    const lfoG = AC.createGain(); lfoG.gain.value = 60;
+    lfo.connect(lfoG); lfoG.connect(dFlt.frequency);
+    o1.start(); o2.start(); lfo.start();
+    /* stellar wind: slow filtered noise */
+    const nb = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate);
+    const nd = nb.getChannelData(0);
+    for(let i=0;i<nd.length;i++) nd[i] = Math.random()*2-1;
+    const ns = AC.createBufferSource(); ns.buffer = nb; ns.loop = true;
+    const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 480; bp.Q.value = 8;
+    const ng = AC.createGain(); ng.gain.value = 0.016;
+    ns.connect(bp); bp.connect(ng); ng.connect(master);
+    const nlfo = AC.createOscillator(); nlfo.frequency.value = 0.027;
+    const nlfoG = AC.createGain(); nlfoG.gain.value = 210;
+    nlfo.connect(nlfoG); nlfoG.connect(bp.frequency);
+    ns.start(); nlfo.start();
+    return true;
+  }catch(err){ AC = null; return false; }
+}
+function ramp(to, dur){
+  if(!master) return;
+  const from = master.gain.value, t0 = performance.now();
+  clearInterval(master._ramp);
+  master._ramp = setInterval(() => {
+    const k = Math.min(1, (performance.now()-t0)/dur);
+    master.gain.value = from + (to-from)*k;
+    if(k >= 1) clearInterval(master._ramp);
+  }, 60);
+}
+function swell(vol, freq, dur){
+  if(!AC || AC.state !== 'running') return;
+  try{
+    const o = AC.createOscillator(); o.type='sine'; o.frequency.value = freq||48;
+    const g = AC.createGain();
+    const t0 = AC.currentTime;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol||0.09, t0+0.07);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+(dur||2.2));
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0+(dur||2.2)+0.1);
+  }catch(err){}
+}
+function audioStart(){
+  if(!audioInit()) return;
+  const live = () => { musicLive = true; };
+  if(AC.state === 'suspended'){
+    AC.resume().then(live).catch(()=>{});
+  }
+  if(AC.state === 'running') live();
+  ramp(0.55, 1800);
+}
+function audioStop(){
+  ramp(0, 900);
+  musicLive = false;
+  setTimeout(() => { try{ if(AC && !sndOn) AC.suspend(); }catch(err){} }, 1000);
+}
+function toggleSound(){
+  try{
+    sndOn = !sndOn;
+    if(sndOn) audioStart(); else audioStop();
+    const btn = $('snd');
+    btn.textContent = sndOn ? '\u25C6 sound on' : '\u25C7 sound off';
+    btn.classList.toggle('on', sndOn);
+  }catch(err){}
+}
+setInterval(() => {
+  if(!musicLive || !AC || AC.state !== 'running') return;
+  if(Math.random() < 0.10){
+    swell(0.028 + Math.random()*0.02, 82 + Math.random()*40, 3.2);
+  }
+}, 1400);
+function gestureRetry(){ if(sndOn && !musicLive) audioStart(); }
+addEventListener('pointerdown', gestureRetry);
+addEventListener('keydown', gestureRetry);
+addEventListener('wheel', gestureRetry, {passive:true});
+document.addEventListener('visibilitychange', () => {
+  try{
+    if(!AC) return;
+    if(document.hidden) AC.suspend();
+    else if(sndOn) AC.resume();
+  }catch(err){}
+});
+
+/* ================= interactions ================= */
+let dragging = false, px = 0, py = 0;
+let lastTapT = 0, lastTapX = 0, lastTapY = 0;
+const pts = new Map();
+let pinchD = 0;
+function markInput(){
+  S.lastInput = performance.now();
+  S.touched = true;
+  $('hint').classList.add('gone');
+}
+function feedCycle(){
+  const now = performance.now();
+  if(now - S.lastBloom < 420) return;
+  S.lastBloom = now;
+  markInput();
+  S.pulse = 1;
+  S.feed = Math.min(1, S.feed + 0.55);
+  S.fov = 1.52;
+  swell(0.11, 44, 2.8);
+}
+cv.addEventListener('pointerdown', e => {
+  dragging = true; px = e.clientX; py = e.clientY;
+  cv.classList.add('grabbing');
+  pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pts.size === 2){
+    const a = [...pts.values()];
+    pinchD = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y);
+  }
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  markInput();
+  const now = performance.now();
+  if(now - lastTapT < 330 && Math.hypot(e.clientX-lastTapX, e.clientY-lastTapY) < 26){
+    feedCycle();
+  }
+  lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
+});
+cv.addEventListener('pointermove', e => {
+  if(pts.has(e.pointerId)) pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pts.size === 2){
+    const a = [...pts.values()];
+    const nd = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y);
+    if(pinchD > 0 && nd > 0){
+      S.dist = clamp(S.dist * pinchD/nd, 2.6, 16.0);
+      markInput();
+    }
+    pinchD = nd;
+    return;
+  }
+  if(!dragging) return;
+  const dx = e.clientX-px, dy = e.clientY-py;
+  px = e.clientX; py = e.clientY;
+  S.yaw   -= dx*0.005;
+  S.pitch  = clamp(S.pitch + dy*0.005, -1.30, 1.30);
+  S.vyaw   = lerp(S.vyaw,   -dx*0.005/0.016, 0.45);
+  S.vpitch = lerp(S.vpitch,  dy*0.005/0.016, 0.45);
+  markInput();
+});
+function endDrag(e){
+  if(e && pts.has(e.pointerId)) pts.delete(e.pointerId);
+  if(pts.size < 2) pinchD = 0;
+  if(pts.size === 0){ dragging = false; cv.classList.remove('grabbing'); }
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+addEventListener('wheel', e => {
+  e.preventDefault();
+  S.dist = clamp(S.dist*Math.exp(e.deltaY*0.0011), 2.6, 16.0);
+  markInput();
+}, {passive:false});
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('dblclick', feedCycle);
+$('snd').addEventListener('click', toggleSound);
+$('fs').addEventListener('click', () => {
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  else document.documentElement.requestFullscreen().catch(()=>{});
+});
+addEventListener('keydown', e => {
+  if(e.code === 'Space'){
+    e.preventDefault();
+    S.zen = !S.zen;
+    document.body.classList.toggle('zen', S.zen);
+    markInput();
+  }else if(e.key === 'm' || e.key === 'M'){
+    toggleSound();
+  }else if(e.key === 'b' || e.key === 'B'){
+    feedCycle(); markInput();
+  }else if(e.key === 'f' || e.key === 'F'){
+    $('fs').click();
+  }else if(e.key === 'ArrowLeft'){ S.yaw += 0.12; markInput(); }
+  else if(e.key === 'ArrowRight'){ S.yaw -= 0.12; markInput(); }
+  else if(e.key === 'ArrowUp'){ S.pitch = clamp(S.pitch-0.08, -1.30, 1.30); markInput(); }
+  else if(e.key === 'ArrowDown'){ S.pitch = clamp(S.pitch+0.08, -1.30, 1.30); markInput(); }
+});
+
+/* ================= hud ================= */
+let lastHud = 0;
+function hud(now){
+  if(now-lastHud < 200) return;
+  lastHud = now;
+  $('sFps').textContent = String(Math.round(fps));
+  $('sDist').textContent = S.dist.toFixed(2)+' r\u209B';
+  let az = Math.round((S.yaw*180/Math.PI)%360); if(az<0) az += 360;
+  $('sAz').textContent = az + '\u00B0';
+  $('sEl').textContent = Math.round(S.pitch*180/Math.PI) + '\u00B0';
+}
+
+/* ================= main loop ================= */
+let last = performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now-last)/1000) || 0.016;
+  last = now;
+  fpsE.push(1/Math.max(dt,1e-4));
+  if(fpsE.length > 30) fpsE.shift();
+  fps = fpsE.reduce((a,b)=>a+b,0)/fpsE.length;
+
+  const it = (now-S.started)/1000;
+
+  /* scripted opening plunge until first touch */
+  let iy = S.yaw, ip = S.pitch, idist = S.dist;
+  if(!S.touched && it < 8){
+    const k = easeIO(clamp(it/7.2, 0, 1));
+    idist = lerp(12.5, S.dist, k);
+    iy    = S.yaw + Math.sin(k*Math.PI)*-0.85;
+    ip    = lerp(0.42, S.pitch, k);
+  }
+
+  /* inertia + idle drift */
+  if(!dragging){
+    S.vyaw   *= Math.exp(-dt*2.2);
+    S.vpitch *= Math.exp(-dt*2.2);
+    S.yaw   += S.vyaw*dt;
+    S.pitch  = clamp(S.pitch + S.vpitch*dt, -1.30, 1.30);
+  }
+  const idle = (!RM && (now-S.lastInput) > 15000) ? Math.min(1, ((now-S.lastInput)-15000)/10000) : 0;
+  S.yaw += dt*(RM ? 0 : (0.045 + idle*0.14));
+
+  /* watchdog */
+  dts = dts*0.7 + dt*0.3;
+  if(dts > 0.5){
+    stalls++;
+    if(stalls >= 2){
+      scale = Math.max(0.22, scale*0.6);
+      fit();
+      stalls = 0;
+      setStatus('heavy load \u2014 lowering resolution ('+Math.round(scale*100)+'%)');
+    }
+  }else if(dts < 0.25 && stalls > 0){ stalls--; }
+
+  /* warm-up */
+  if(now - lastWarm > 700){
+    lastWarm = now;
+    const target = warmK;
+    if(Math.abs(scale-target) > 0.02){ scale = target; fit(); }
+    const fastEnough = LITE || dts < 0.05;
+    if(warmK < 1) warmK = Math.min(1, warmK + (fastEnough ? 0.10 : -0.10));
+    warmK = Math.max(warmK, scale);
+  }
+
+  S.pulse *= Math.exp(-dt*1.9);
+  S.flash *= Math.exp(-dt*2.2);
+  S.feed  *= Math.exp(-dt*0.55);
+  S.fov   += (1.65-S.fov)*Math.min(1, dt*4);
+
+  const breathe = 1 + 0.010*Math.sin(it*0.5) + S.pulse*0.03*Math.sin(it*8.0);
+
+  /* hero parallax */
+  if(!S.zen){
+    const hx = clamp(-S.vyaw*260, -14, 14);
+    const hy = clamp(S.vpitch*180, -8, 8);
+    $('hero').style.transform = 'translateX(-50%) translate('+hx.toFixed(1)+'px,'+hy.toFixed(1)+'px)';
+  }
+
+  if(gl && U.uRes){
+    gl.uniform2f(U.uRes, cv.width, cv.height);
+    gl.uniform1f(U.uTime, it*timeScale);
+    gl.uniform1f(U.uYaw, iy);
+    gl.uniform1f(U.uPitch, ip);
+    gl.uniform1f(U.uDist, idist*breathe);
+    gl.uniform1f(U.uFov, S.fov);
+    gl.uniform1f(U.uFeed, clamp(S.feed,0,1));
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  S.frames++;
+  hud(now);
+}
+
+/* ================= diagnostics hooks ================= */
+window.__check = () => ({
+  frames:S.frames, fps:Math.round(fps), w:cv.width, h:cv.height,
+  scale:+scale.toFixed(2),
+  dist:+S.dist.toFixed(2),
+  yaw:+S.yaw.toFixed(3), pitch:+S.pitch.toFixed(3),
+  feed:+clamp(S.feed,0,1).toFixed(2),
+  zen:S.zen, sound:sndOn, musicLive, gl:!!gl, err:failMsg,
+  secs:+((performance.now()-S.started)/1000).toFixed(1),
+});
+
+setStatus('starting\u2026');
+requestAnimationFrame(() => { requestAnimationFrame(() => {
+  try{
+    setStatus('integrating geodesics\u2026');
+    bootGL();
+    fit();
+    setStatus(gl ? 'running \u2014 '+STEPS+' geodesic steps/px' : 'WebGL unavailable \u2014 fallback view');
+    if(sndOn) audioStart();
+  }catch(err){
+    setStatus('init failed: '+(err && err.message || err));
+  }
+  requestAnimationFrame(frame);
+}); });
+setTimeout(() => { $('hint').classList.add('gone'); }, 13000);
+})();
+</script>
+</body>
+</html>
